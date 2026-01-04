@@ -137,14 +137,14 @@ Content-Type: application/json
 Authorization: Basic QW5uNTQzMjE6QW5uNTQzMjEh
 
 
-### Позитивный тест: пополнение аккаунта на сумму 4999
+### Позитивный тест: пополнение аккаунта на сумму 4999.99
 POST http://localhost:4111/api/v1/accounts/deposit
 Content-Type: application/json
 Authorization: Basic QW5uMTIzNDU6QW5uMTIzNDUh
 
 {
   "id": 1,
-  "balance": 4999
+  "balance": 4999.99
 }
 
 ### Позитивный тест: пополнение аккаунта на сумму 5000
@@ -157,14 +157,14 @@ Authorization: Basic QW5uMTIzNDU6QW5uMTIzNDUh
   "balance": 5000
 }
 
-### Позитивный тест: пополнение аккаунта на сумму 1
+### Позитивный тест: пополнение аккаунта на сумму 0.01
 POST http://localhost:4111/api/v1/accounts/deposit
 Content-Type: application/json
 Authorization: Basic QW5uMTIzNDU6QW5uMTIzNDUh
 
 {
   "id": 1,
-  "balance": 1
+  "balance": 0.01
 }
 
 ### Негативный тест: пополнение аккаунта на сумму -3000
@@ -197,7 +197,7 @@ Authorization: Basic QW5uMTIzNDU6QW5uMTIzNDUh
   "balance": 0
 }
 
-### Негативный тест: пополнение аккаунта на сумму 5001
+### Негативный тест: пополнение аккаунта на сумму 5000.01
 ### Попоплнение прошло удачно. Баг
 POST http://localhost:4111/api/v1/accounts/deposit
 Content-Type: application/json
@@ -205,7 +205,7 @@ Authorization: Basic QW5uMTIzNDU6QW5uMTIzNDUh
 
 {
   "id": 1,
-  "balance": 5001
+  "balance": 5000.01
 }
 
 ### Негативный тест: пополнение аккаунта не введя сумму
@@ -238,7 +238,7 @@ Authorization: Basic QW5uMTIzNDU6QW5uMTIzNDUh
   "balance": 2000
 }
 
-### Позитивный тест: перевод на свой счет суммы 9999
+### Позитивный тест: перевод на свой счет суммы 9999.99
 POST http://localhost:4111/api/v1/accounts/transfer
 Content-Type: application/json
 Authorization: Basic QW5uMTIzNDU6QW5uMTIzNDUh
@@ -246,7 +246,7 @@ Authorization: Basic QW5uMTIzNDU6QW5uMTIzNDUh
 {
   "senderAccountId": 1,
   "receiverAccountId": 2,
-  "amount": 9999
+  "amount": 9999.99
 }
 
 ### Позитивный тест: перевод на свой счет суммы 10000
@@ -260,7 +260,7 @@ Authorization: Basic QW5uMTIzNDU6QW5uMTIzNDUh
   "amount": 10000
 }
 
-### Позитивный тест: перевод на чужой счет суммы 1
+### Позитивный тест: перевод на чужой счет суммы 0.01
 POST http://localhost:4111/api/v1/accounts/transfer
 Content-Type: application/json
 Authorization: Basic QW5uMTIzNDU6QW5uMTIzNDUh
@@ -268,10 +268,10 @@ Authorization: Basic QW5uMTIzNDU6QW5uMTIzNDUh
 {
   "senderAccountId": 2,
   "receiverAccountId": 3,
-  "amount": 1
+  "amount": 0.01
 }
 
-### Негативный тест: перевод на свой счет суммы 10001 при условии, что на балансе больше 10001
+### Негативный тест: перевод на свой счет суммы 10001 при условии, что на балансе больше 10000.01
 ### перевод успешен. баг
 POST http://localhost:4111/api/v1/accounts/transfer
 Content-Type: application/json
@@ -280,7 +280,7 @@ Authorization: Basic QW5uMTIzNDU6QW5uMTIzNDUh
 {
   "senderAccountId": 1,
   "receiverAccountId": 2,
-  "amount": 10001
+  "amount": 10000.01
 }
 
 ### Негативный тест: перевод на свой счет суммы -1 при условии что на балансе больше 1
