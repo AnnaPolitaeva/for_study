@@ -133,7 +133,7 @@ public class DepositByUserTest {
                 }
                 """, accountId, amount);
 
-        // осуществляем перевод суммы
+        // осуществляем пополнение аккаунта
         given()
                 .header("Authorization", userAuthHeader)
                 .contentType(ContentType.JSON)
@@ -164,7 +164,7 @@ public class DepositByUserTest {
                 }
                 """, accountId, amount);
 
-        // осуществляем перевод суммы
+        // осуществляем пополнение аккаунта
         given()
                 .header("Authorization", userAuthHeader)
                 .contentType(ContentType.JSON)
@@ -187,7 +187,7 @@ public class DepositByUserTest {
                 }
                 """, accountId, amount);
 
-        // осуществляем перевод суммы
+        // осуществляем пополнение аккаунта
         given()
                 .header("Authorization", userAuthHeader)
                 .contentType(ContentType.JSON)
@@ -208,7 +208,7 @@ public class DepositByUserTest {
                 }
                 """, diferentAccountId);
 
-        // осуществляем перевод суммы
+        // осуществляем пополнение аккаунта
         given()
                 .header("Authorization", userAuthHeader)
                 .contentType(ContentType.JSON)
