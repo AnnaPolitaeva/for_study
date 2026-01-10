@@ -1,0 +1,377 @@
+#ПРЕДШАГИ
+#авторизация за админа
+#создание юзера через админа
+#создание другого юзера через админа
+#авторизация за юзера
+#создание юзером одного аккаунта
+#создание юзером еще одного аккаунта
+#авторизация за другого юзера
+#создание другим юзером одного аккаунта
+
+#
+#депозит денег юзером:
+# - сумма положительная
+# - не более 5000
+# - нельзя делать депозит в чужой аккаунт
+#
+#кейсы для пополнения:
+#положительные:
+# - положить 4999.99 на свой аккаунт
+# - положить 5000 на свой аккаунт
+# - положить 0.01 на свой аккаунт
+#Отрицательные:
+# - положить -3000 на свой аккаунт
+# - положить -0.01 на свой аккаунт
+# - положить 0 на свой аккаунт
+# - положить 5000.01 на свой аккаунт
+# - положить 2000 на чужой аккаунт
+# - не указывать сумму вообще
+# - указать буквы
+
+
+#перевод денег с одного аккаунта на другой:
+# - не более 10000
+# - сумма положительная и не превышает баланс
+# - можно переводить на чужие аккаунты
+#
+#кейсы для перевода денег
+#положительные:
+# - перевести 9999.99 на свой счет при болансе более 9999.99
+# - перевести 10000 на свой счет при болансе более 10000
+# - перевести 0.01 на чужой счет
+#отрицательные:
+# - перевести 10000.01 на свой счет при болансе более 10000.01
+# - перевести 6000 на чужой счет при балансе менее 6000
+# - перевести -0.01 на свой счет при балансе более 0.01
+# - перевести 0 на свой счет
+# - не указывать сумму вообще
+
+
+#изменение имени пользователя
+# - два слова состоящие из букв, разделенные пробелом
+#
+#кейсы для изменения имени
+#положительный: изменить имя на Bon Jovi
+#отрицательные:
+# - изменить имя на David
+# - изменить имя на Mike!Shein
+# - изменить имя на Sara  Parker
+# - изменить имя на Ann 123
+
+
+
+#Итог по тестам:
+# 1. Не работает верхнее ограничение 5000 при пополнении аккаунта
+# 2. Не работает верхнее ограничение 10000 при переводе средств
+# 3. Не работают проверки на валидность имени при его смене
+
+
+### Получение токена авторизации админа
+### Админский токен: Basic YWRtaW46YWRtaW4=
+POST http://localhost:4111/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "admin"
+}
+
+### Создание админом юзера
+POST http://localhost:4111/api/v1/admin/users
+Content-Type: application/json
+Authorization: Basic YWRtaW46YWRtaW4=
+
+{
+  "username": "Ann12345",
+  "password": "Ann12345!",
+  "role": "USER"
+}
+
+### Создание админом другого юзера
+POST http://localhost:4111/api/v1/admin/users
+Content-Type: application/json
+Authorization: Basic YWRtaW46YWRtaW4=
+
+{
+  "username": "Ann54321",
+  "password": "Ann54321!",
+  "role": "USER"
+}
+
+### Получение токена авторизации юзера
+### Юзерский токен: Basic QW5uMTIzNDU6QW5uMTIzNDUh
+POST http://localhost:4111/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "username": "Ann12345",
+  "password": "Ann12345!"
+}
+
+### Юзер создает аккаунт 1
+### "accountNumber": "ACC1"
+POST http://localhost:4111/api/v1/accounts
+Content-Type: application/json
+Authorization: Basic QW5uMTIzNDU6QW5uMTIzNDUh
+
+### Юзер создает аккаунт 2
+### "accountNumber": "ACC2"
+POST http://localhost:4111/api/v1/accounts
+Content-Type: application/json
+Authorization: Basic QW5uMTIzNDU6QW5uMTIzNDUh
+
+### Получение токена авторизации другого юзера
+### Юзерский токен: Basic QW5uNTQzMjE6QW5uNTQzMjEh
+POST http://localhost:4111/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "username": "Ann54321",
+  "password": "Ann54321!"
+}
+
+### Другой юзер создает аккаунт
+### accountNumber": "ACC3"
+POST http://localhost:4111/api/v1/accounts
+Content-Type: application/json
+Authorization: Basic QW5uNTQzMjE6QW5uNTQzMjEh
+
+
+### Позитивный тест: пополнение аккаунта на сумму 4999.99
+POST http://localhost:4111/api/v1/accounts/deposit
+Content-Type: application/json
+Authorization: Basic QW5uMTIzNDU6QW5uMTIzNDUh
+
+{
+  "id": 1,
+  "balance": 4999.99
+}
+
+### Позитивный тест: пополнение аккаунта на сумму 5000
+POST http://localhost:4111/api/v1/accounts/deposit
+Content-Type: application/json
+Authorization: Basic QW5uMTIzNDU6QW5uMTIzNDUh
+
+{
+  "id": 1,
+  "balance": 5000
+}
+
+### Позитивный тест: пополнение аккаунта на сумму 0.01
+POST http://localhost:4111/api/v1/accounts/deposit
+Content-Type: application/json
+Authorization: Basic QW5uMTIzNDU6QW5uMTIzNDUh
+
+{
+  "id": 1,
+  "balance": 0.01
+}
+
+### Негативный тест: пополнение аккаунта на сумму -3000
+POST http://localhost:4111/api/v1/accounts/deposit
+Content-Type: application/json
+Authorization: Basic QW5uMTIzNDU6QW5uMTIzNDUh
+
+{
+  "id": 1,
+  "balance": -3000
+}
+
+### Негативный тест: пополнение аккаунта на сумму -0.01
+POST http://localhost:4111/api/v1/accounts/deposit
+Content-Type: application/json
+Authorization: Basic QW5uMTIzNDU6QW5uMTIzNDUh
+
+{
+  "id": 1,
+  "balance": -0.01
+}
+
+### Негативный тест: пополнение аккаунта на сумму 0
+POST http://localhost:4111/api/v1/accounts/deposit
+Content-Type: application/json
+Authorization: Basic QW5uMTIzNDU6QW5uMTIzNDUh
+
+{
+  "id": 1,
+  "balance": 0
+}
+
+### Негативный тест: пополнение аккаунта на сумму 5000.01
+### Попоплнение прошло удачно. Баг
+POST http://localhost:4111/api/v1/accounts/deposit
+Content-Type: application/json
+Authorization: Basic QW5uMTIzNDU6QW5uMTIzNDUh
+
+{
+  "id": 1,
+  "balance": 5000.01
+}
+
+### Негативный тест: пополнение аккаунта не введя сумму
+POST http://localhost:4111/api/v1/accounts/deposit
+Content-Type: application/json
+Authorization: Basic QW5uMTIzNDU6QW5uMTIzNDUh
+
+{
+  "id": 1,
+  "balance":
+}
+
+### Негативный тест: пополнение аккаунта на сумму буквами
+POST http://localhost:4111/api/v1/accounts/deposit
+Content-Type: application/json
+Authorization: Basic QW5uMTIzNDU6QW5uMTIzNDUh
+
+{
+  "id": 1,
+  "balance": "сто"
+}
+
+### Негативный тест: пополнение чужого аккаунта на сумму 2000
+POST http://localhost:4111/api/v1/accounts/deposit
+Content-Type: application/json
+Authorization: Basic QW5uMTIzNDU6QW5uMTIzNDUh
+
+{
+  "id": 3,
+  "balance": 2000
+}
+
+### Позитивный тест: перевод на свой счет суммы 9999.99
+POST http://localhost:4111/api/v1/accounts/transfer
+Content-Type: application/json
+Authorization: Basic QW5uMTIzNDU6QW5uMTIzNDUh
+
+{
+  "senderAccountId": 1,
+  "receiverAccountId": 2,
+  "amount": 9999.99
+}
+
+### Позитивный тест: перевод на свой счет суммы 10000
+POST http://localhost:4111/api/v1/accounts/transfer
+Content-Type: application/json
+Authorization: Basic QW5uMTIzNDU6QW5uMTIzNDUh
+
+{
+  "senderAccountId": 1,
+  "receiverAccountId": 2,
+  "amount": 10000
+}
+
+### Позитивный тест: перевод на чужой счет суммы 0.01
+POST http://localhost:4111/api/v1/accounts/transfer
+Content-Type: application/json
+Authorization: Basic QW5uMTIzNDU6QW5uMTIzNDUh
+
+{
+  "senderAccountId": 2,
+  "receiverAccountId": 3,
+  "amount": 0.01
+}
+
+### Негативный тест: перевод на свой счет суммы 10001 при условии, что на балансе больше 10000.01
+### перевод успешен. баг
+POST http://localhost:4111/api/v1/accounts/transfer
+Content-Type: application/json
+Authorization: Basic QW5uMTIzNDU6QW5uMTIzNDUh
+
+{
+  "senderAccountId": 1,
+  "receiverAccountId": 2,
+  "amount": 10000.01
+}
+
+### Негативный тест: перевод на свой счет суммы -0.01 при условии что на балансе больше 0.01
+POST http://localhost:4111/api/v1/accounts/transfer
+Content-Type: application/json
+Authorization: Basic QW5uMTIzNDU6QW5uMTIzNDUh
+
+{
+  "senderAccountId": 1,
+  "receiverAccountId": 2,
+  "amount": -0.01
+}
+
+### Негативный тест: перевод на свой счет суммы 6000 при условии что сумма на счету меньше
+POST http://localhost:4111/api/v1/accounts/transfer
+Content-Type: application/json
+Authorization: Basic QW5uMTIzNDU6QW5uMTIzNDUh
+
+{
+  "senderAccountId": 1,
+  "receiverAccountId": 2,
+  "amount": 6000
+}
+
+### Негативный тест: перевод на свой счет суммы 0
+POST http://localhost:4111/api/v1/accounts/transfer
+Content-Type: application/json
+Authorization: Basic QW5uMTIzNDU6QW5uMTIzNDUh
+
+{
+  "senderAccountId": 1,
+  "receiverAccountId": 2,
+  "amount": 0
+}
+
+### Негативный тест: перевод на свой счет пустой суммы
+POST http://localhost:4111/api/v1/accounts/transfer
+Content-Type: application/json
+Authorization: Basic QW5uMTIzNDU6QW5uMTIzNDUh
+
+{
+  "senderAccountId": 1,
+  "receiverAccountId": 2,
+  "amount": " "
+}
+
+### Позитивный тест: изменение имени пользователя на Bon Jovi
+PUT http://localhost:4111/api/v1/customer/profile
+Content-Type: application/json
+Authorization: Basic QW5uMTIzNDU6QW5uMTIzNDUh
+
+{
+  "name": "Bon Jovi"
+}
+
+### Негативный тест: изменение имени пользователя на Ann 123 (с цифрами)
+### изменилось. баг
+PUT http://localhost:4111/api/v1/customer/profile
+Content-Type: application/json
+Authorization: Basic QW5uMTIzNDU6QW5uMTIzNDUh
+
+{
+  "name": "Ann 123"
+}
+
+### Негативный тест: изменение имени пользователя на Sara  Parker (с двумя пробелами)
+### изменилось. баг?
+PUT http://localhost:4111/api/v1/customer/profile
+Content-Type: application/json
+Authorization: Basic QW5uMTIzNDU6QW5uMTIzNDUh
+
+{
+  "name": "Sara  Parker"
+}
+
+### Негативный тест: изменение имени пользователя на Mike!Shein (с восклицательным знаком вместо пробела)
+### изменилось. баг
+PUT http://localhost:4111/api/v1/customer/profile
+Content-Type: application/json
+Authorization: Basic QW5uMTIzNDU6QW5uMTIzNDUh
+
+{
+  "name": "Mike!Shein"
+}
+
+### Негативный тест: изменение имени пользователя на David (состоит из одного слова)
+### изменилось. баг
+PUT http://localhost:4111/api/v1/customer/profile
+Content-Type: application/json
+Authorization: Basic QW5uMTIzNDU6QW5uMTIzNDUh
+
+{
+  "name": "David"
+}
