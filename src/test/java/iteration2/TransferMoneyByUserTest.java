@@ -32,22 +32,22 @@ public class TransferMoneyByUserTest {
                 List.of(new RequestLoggingFilter(),
                         new ResponseLoggingFilter()));
 
-//        // создание пользователя
-//        given()
-//                .contentType(ContentType.JSON)
-//                .accept(ContentType.JSON)
-//                .header("Authorization", "Basic YWRtaW46YWRtaW4=")
-//                .body("""
-//                        {
-//                          "username": "Ann12345",
-//                          "password": "Ann12345!",
-//                          "role": "USER"
-//                        }
-//                        """)
-//                .post("http://localhost:4111/api/v1/admin/users")
-//                .then()
-//                .assertThat()
-//                .statusCode(HttpStatus.SC_CREATED);
+        // создание пользователя
+        given()
+                .contentType(ContentType.JSON)
+                .accept(ContentType.JSON)
+                .header("Authorization", "Basic YWRtaW46YWRtaW4=")
+                .body("""
+                        {
+                          "username": "Ann12345",
+                          "password": "Ann12345!",
+                          "role": "USER"
+                        }
+                        """)
+                .post("http://localhost:4111/api/v1/admin/users")
+                .then()
+                .assertThat()
+                .statusCode(HttpStatus.SC_CREATED);
 
         // получаем токен юзера
         userAuthHeader = given()
@@ -90,22 +90,22 @@ public class TransferMoneyByUserTest {
                 .extract()
                 .path("id");
 
-//        // создание другого пользователя
-//        given()
-//                .contentType(ContentType.JSON)
-//                .accept(ContentType.JSON)
-//                .header("Authorization", "Basic YWRtaW46YWRtaW4=")
-//                .body("""
-//                        {
-//                          "username": "Ann54321",
-//                          "password": "Ann54321!",
-//                          "role": "USER"
-//                        }
-//                        """)
-//                .post("http://localhost:4111/api/v1/admin/users")
-//                .then()
-//                .assertThat()
-//                .statusCode(HttpStatus.SC_CREATED);
+        // создание другого пользователя
+        given()
+                .contentType(ContentType.JSON)
+                .accept(ContentType.JSON)
+                .header("Authorization", "Basic YWRtaW46YWRtaW4=")
+                .body("""
+                        {
+                          "username": "Ann54321",
+                          "password": "Ann54321!",
+                          "role": "USER"
+                        }
+                        """)
+                .post("http://localhost:4111/api/v1/admin/users")
+                .then()
+                .assertThat()
+                .statusCode(HttpStatus.SC_CREATED);
 
         // получаем токен другого юзера
         differentUserAuthHeader = given()
