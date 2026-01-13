@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Locale;
 
 import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.equalTo;
 
 public class ChangeNameByUserTest {
     static String userAuthHeader;
@@ -26,21 +27,21 @@ public class ChangeNameByUserTest {
                         new ResponseLoggingFilter()));
 
         // создание пользователя
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", "Basic YWRtaW46YWRtaW4=")
-                .body("""
-                        {
-                          "username": "Ann123456",
-                          "password": "Ann123456!",
-                          "role": "USER"
-                        }
-                        """)
-                .post("http://localhost:4111/api/v1/admin/users")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_CREATED);
+//        given()
+//                .contentType(ContentType.JSON)
+//                .accept(ContentType.JSON)
+//                .header("Authorization", "Basic YWRtaW46YWRtaW4=")
+//                .body("""
+//                        {
+//                          "username": "Ann123456",
+//                          "password": "Ann123456!",
+//                          "role": "USER"
+//                        }
+//                        """)
+//                .post("http://localhost:4111/api/v1/admin/users")
+//                .then()
+//                .assertThat()
+//                .statusCode(HttpStatus.SC_CREATED);
 
         // получаем токен юзера
         userAuthHeader = given()
@@ -62,6 +63,7 @@ public class ChangeNameByUserTest {
 
     @Test
     public void UserCanChangeNameWithCorrectNameTest() {
+
         given()
                 .header("Authorization", userAuthHeader)
                 .contentType(ContentType.JSON)
@@ -75,7 +77,17 @@ public class ChangeNameByUserTest {
                 .then()
                 .assertThat()
                 .statusCode(HttpStatus.SC_OK)
-                .body("message", Matchers.equalTo("Profile updated successfully"));
+                .body("message", equalTo("Profile updated successfully"));
+
+        // проверка того, что имя поменялось
+        given()
+                .header("Authorization", userAuthHeader)
+                .accept(ContentType.JSON)
+                .get("http://localhost:4111/api/v1/customer/profile")
+                .then()
+                .assertThat()
+                .statusCode(HttpStatus.SC_OK)
+                .body("name", equalTo("Bon Jovi"));
     }
 
     @ParameterizedTest
@@ -96,6 +108,16 @@ public class ChangeNameByUserTest {
                 .then()
                 .assertThat()
                 .statusCode(HttpStatus.SC_BAD_REQUEST)
-                .body(Matchers.equalTo("Name must contain two words with letters only"));
+                .body(equalTo("Name must contain two words with letters only"));
+
+        // проверка того, что имя не поменялось
+        given()
+                .header("Authorization", userAuthHeader)
+                .accept(ContentType.JSON)
+                .get("http://localhost:4111/api/v1/customer/profile")
+                .then()
+                .assertThat()
+                .statusCode(HttpStatus.SC_OK)
+                .body("name", equalTo("Bon Jovi"));
     }
 }

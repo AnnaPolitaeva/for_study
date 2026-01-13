@@ -18,6 +18,8 @@ import java.util.Locale;
 import java.util.stream.Stream;
 
 import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.closeTo;
+import static org.hamcrest.Matchers.equalTo;
 
 public class TransferMoneyByUserTest {
     static String userAuthHeader;
@@ -33,21 +35,21 @@ public class TransferMoneyByUserTest {
                         new ResponseLoggingFilter()));
 
         // создание пользователя
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", "Basic YWRtaW46YWRtaW4=")
-                .body("""
-                        {
-                          "username": "Ann12345",
-                          "password": "Ann12345!",
-                          "role": "USER"
-                        }
-                        """)
-                .post("http://localhost:4111/api/v1/admin/users")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_CREATED);
+//        given()
+//                .contentType(ContentType.JSON)
+//                .accept(ContentType.JSON)
+//                .header("Authorization", "Basic YWRtaW46YWRtaW4=")
+//                .body("""
+//                        {
+//                          "username": "Ann12345",
+//                          "password": "Ann12345!",
+//                          "role": "USER"
+//                        }
+//                        """)
+//                .post("http://localhost:4111/api/v1/admin/users")
+//                .then()
+//                .assertThat()
+//                .statusCode(HttpStatus.SC_CREATED);
 
         // получаем токен юзера
         userAuthHeader = given()
@@ -91,21 +93,21 @@ public class TransferMoneyByUserTest {
                 .path("id");
 
         // создание другого пользователя
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", "Basic YWRtaW46YWRtaW4=")
-                .body("""
-                        {
-                          "username": "Ann54321",
-                          "password": "Ann54321!",
-                          "role": "USER"
-                        }
-                        """)
-                .post("http://localhost:4111/api/v1/admin/users")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_CREATED);
+//        given()
+//                .contentType(ContentType.JSON)
+//                .accept(ContentType.JSON)
+//                .header("Authorization", "Basic YWRtaW46YWRtaW4=")
+//                .body("""
+//                        {
+//                          "username": "Ann54321",
+//                          "password": "Ann54321!",
+//                          "role": "USER"
+//                        }
+//                        """)
+//                .post("http://localhost:4111/api/v1/admin/users")
+//                .then()
+//                .assertThat()
+//                .statusCode(HttpStatus.SC_CREATED);
 
         // получаем токен другого юзера
         differentUserAuthHeader = given()
@@ -138,12 +140,12 @@ public class TransferMoneyByUserTest {
     }
 
     @ParameterizedTest
-    @ValueSource(doubles = {9999.99, 10000})
-    public void userCanTransferCorrectAmountOnOwnAccountTest(double amount) {
+    @ValueSource(floats = {9999.99F, 10000F})
+    public void userCanTransferCorrectAmountOnOwnAccountTest(float amount) {
         String json1 = String.format("""
                 {
                   "id": %d,
-                  "balance": 5000
+                  "balance": 5000.00
                 }
                 """, accountId);
         //пополнение аккаунта
@@ -167,6 +169,30 @@ public class TransferMoneyByUserTest {
                 .assertThat()
                 .statusCode(HttpStatus.SC_OK);
 
+
+        // сначала смотрим сколько на балансе отправляющего аккаунта
+        float balance1 = given()
+                .header("Authorization", userAuthHeader)
+                .accept(ContentType.JSON)
+                .get("http://localhost:4111/api/v1/customer/profile")
+                .then()
+                .assertThat()
+                .statusCode(HttpStatus.SC_OK)
+                .extract()
+                .path(String.format("accounts.find { it.id == %d }.balance", accountId));
+
+        // сначала смотрим сколько на балансе получающего аккаунта
+        float balance2 = given()
+                .header("Authorization", userAuthHeader)
+                .accept(ContentType.JSON)
+                .get("http://localhost:4111/api/v1/customer/profile")
+                .then()
+                .assertThat()
+                .statusCode(HttpStatus.SC_OK)
+                .extract()
+                .path(String.format("accounts.find { it.id == %d }.balance", secondAccountId));
+
+
         String json2 = String.format(Locale.US, """
                 {
                   "senderAccountId": %d,
@@ -185,6 +211,27 @@ public class TransferMoneyByUserTest {
                 .then()
                 .assertThat()
                 .statusCode(HttpStatus.SC_OK);
+
+
+        // проверка того, что баланс отправляющего аккаунта изменился
+        given()
+                .header("Authorization", userAuthHeader)
+                .accept(ContentType.JSON)
+                .get("http://localhost:4111/api/v1/customer/profile")
+                .then()
+                .assertThat()
+                .statusCode(HttpStatus.SC_OK)
+                .body(String.format("accounts.find { it.id == %d }.balance", accountId), equalTo(Math.round((balance1 - amount) * 100) / 100.0f));
+
+        // проверка того, что баланс получающего аккаунта изменился
+        given()
+                .header("Authorization", userAuthHeader)
+                .accept(ContentType.JSON)
+                .get("http://localhost:4111/api/v1/customer/profile")
+                .then()
+                .assertThat()
+                .statusCode(HttpStatus.SC_OK)
+                .body(String.format("accounts.find { it.id == %d }.balance", secondAccountId), equalTo(Math.round((balance2 + amount) * 100) / 100.0f));
     }
 
     @Test
@@ -206,6 +253,28 @@ public class TransferMoneyByUserTest {
                 .assertThat()
                 .statusCode(HttpStatus.SC_OK);
 
+        // сначала смотрим сколько на балансе отправляющего аккаунта
+        float balance1 = given()
+                .header("Authorization", userAuthHeader)
+                .accept(ContentType.JSON)
+                .get("http://localhost:4111/api/v1/customer/profile")
+                .then()
+                .assertThat()
+                .statusCode(HttpStatus.SC_OK)
+                .extract()
+                .path(String.format("accounts.find { it.id == %d }.balance", accountId));
+
+        // сначала смотрим сколько на балансе получающего аккаунта
+        float balance2 = given()
+                .header("Authorization", differentUserAuthHeader)
+                .accept(ContentType.JSON)
+                .get("http://localhost:4111/api/v1/customer/profile")
+                .then()
+                .assertThat()
+                .statusCode(HttpStatus.SC_OK)
+                .extract()
+                .path(String.format("accounts.find { it.id == %d }.balance", differentAccountId));
+
         String json = String.format("""
                 {
                   "senderAccountId": %d,
@@ -224,6 +293,26 @@ public class TransferMoneyByUserTest {
                 .then()
                 .assertThat()
                 .statusCode(HttpStatus.SC_OK);
+
+        // проверка того, что баланс отправляющего аккаунта изменился
+        given()
+                .header("Authorization", userAuthHeader)
+                .accept(ContentType.JSON)
+                .get("http://localhost:4111/api/v1/customer/profile")
+                .then()
+                .assertThat()
+                .statusCode(HttpStatus.SC_OK)
+                .body(String.format("accounts.find { it.id == %d }.balance", accountId), equalTo(balance1 - 0.01F));
+
+        // проверка того, что баланс получающего аккаунта изменился
+        given()
+                .header("Authorization", differentUserAuthHeader)
+                .accept(ContentType.JSON)
+                .get("http://localhost:4111/api/v1/customer/profile")
+                .then()
+                .assertThat()
+                .statusCode(HttpStatus.SC_OK)
+                .body(String.format("accounts.find { it.id == %d }.balance", differentAccountId), equalTo(balance2 + 0.01F));
     }
 
     public static Stream<Arguments> invalidData(){
@@ -272,6 +361,29 @@ public class TransferMoneyByUserTest {
                 .assertThat()
                 .statusCode(HttpStatus.SC_OK);
 
+        // сначала смотрим сколько на балансе отправляющего аккаунта
+        float balance1 = given()
+                .header("Authorization", userAuthHeader)
+                .accept(ContentType.JSON)
+                .get("http://localhost:4111/api/v1/customer/profile")
+                .then()
+                .assertThat()
+                .statusCode(HttpStatus.SC_OK)
+                .extract()
+                .path(String.format("accounts.find { it.id == %d }.balance", accountId));
+
+        // сначала смотрим сколько на балансе получающего аккаунта
+        float balance2 = given()
+                .header("Authorization", userAuthHeader)
+                .accept(ContentType.JSON)
+                .get("http://localhost:4111/api/v1/customer/profile")
+                .then()
+                .assertThat()
+                .statusCode(HttpStatus.SC_OK)
+                .extract()
+                .path(String.format("accounts.find { it.id == %d }.balance", secondAccountId));
+
+
         String json = String.format(Locale.US, """
                 {
                   "senderAccountId": %d,
@@ -290,11 +402,42 @@ public class TransferMoneyByUserTest {
                 .then()
                 .assertThat()
                 .statusCode(HttpStatus.SC_BAD_REQUEST)
-                .body(Matchers.equalTo(error));
+                .body(equalTo(error));
+
+        // проверка того, что баланс отправляющего аккаунта не изменился
+        given()
+                .header("Authorization", userAuthHeader)
+                .accept(ContentType.JSON)
+                .get("http://localhost:4111/api/v1/customer/profile")
+                .then()
+                .assertThat()
+                .statusCode(HttpStatus.SC_OK)
+                .body(String.format("accounts.find { it.id == %d }.balance", accountId), equalTo(balance1));
+
+        // проверка того, что баланс получающего аккаунта не изменился
+        given()
+                .header("Authorization", userAuthHeader)
+                .accept(ContentType.JSON)
+                .get("http://localhost:4111/api/v1/customer/profile")
+                .then()
+                .assertThat()
+                .statusCode(HttpStatus.SC_OK)
+                .body(String.format("accounts.find { it.id == %d }.balance", secondAccountId), equalTo(balance2));
     }
 
     @Test
     public void userCanNotTransferAmountMoreThenBalanceTest() {
+
+        // сначала смотрим сколько на балансе получающего аккаунта
+        float balance = given()
+                .header("Authorization", differentUserAuthHeader)
+                .accept(ContentType.JSON)
+                .get("http://localhost:4111/api/v1/customer/profile")
+                .then()
+                .assertThat()
+                .statusCode(HttpStatus.SC_OK)
+                .extract()
+                .path(String.format("accounts.find { it.id == %d }.balance", differentAccountId));
 
         //создаем новый аккаунт, чтоб на нем был нулевой баланс и вытягиваем его id
         int newAccountId = given()
@@ -326,12 +469,55 @@ public class TransferMoneyByUserTest {
                 .then()
                 .assertThat()
                 .statusCode(HttpStatus.SC_BAD_REQUEST)
-                .body(Matchers.equalTo("Invalid transfer: insufficient funds or invalid accounts"));
+                .body(equalTo("Invalid transfer: insufficient funds or invalid accounts"));
+
+        // проверка того, что баланс отправляющего аккаунта не изменился
+        given()
+                .header("Authorization", userAuthHeader)
+                .accept(ContentType.JSON)
+                .get("http://localhost:4111/api/v1/customer/profile")
+                .then()
+                .assertThat()
+                .statusCode(HttpStatus.SC_OK)
+                .body(String.format("accounts.find { it.id == %d }.balance", accountId), equalTo(0.0F));
+
+        // проверка того, что баланс получающего аккаунта не изменился
+        given()
+                .header("Authorization", differentUserAuthHeader)
+                .accept(ContentType.JSON)
+                .get("http://localhost:4111/api/v1/customer/profile")
+                .then()
+                .assertThat()
+                .statusCode(HttpStatus.SC_OK)
+                .body(String.format("accounts.find { it.id == %d }.balance", differentAccountId), equalTo(balance));
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"  ", "сто"})
     public void userCanNotTransferEmptyAmountOrStringAmountTest(String amount) {
+
+        // сначала смотрим сколько на балансе отправляющего аккаунта
+        float balance1 = given()
+                .header("Authorization", userAuthHeader)
+                .accept(ContentType.JSON)
+                .get("http://localhost:4111/api/v1/customer/profile")
+                .then()
+                .assertThat()
+                .statusCode(HttpStatus.SC_OK)
+                .extract()
+                .path(String.format("accounts.find { it.id == %d }.balance", accountId));
+
+        // сначала смотрим сколько на балансе получающего аккаунта
+        float balance2 = given()
+                .header("Authorization", userAuthHeader)
+                .accept(ContentType.JSON)
+                .get("http://localhost:4111/api/v1/customer/profile")
+                .then()
+                .assertThat()
+                .statusCode(HttpStatus.SC_OK)
+                .extract()
+                .path(String.format("accounts.find { it.id == %d }.balance", secondAccountId));
+
         String json = String.format("""
                 {
                   "senderAccountId": %d,
@@ -350,5 +536,25 @@ public class TransferMoneyByUserTest {
                 .then()
                 .assertThat()
                 .statusCode(HttpStatus.SC_BAD_REQUEST);
+
+        // проверка того, что баланс отправляющего аккаунта не изменился
+        given()
+                .header("Authorization", userAuthHeader)
+                .accept(ContentType.JSON)
+                .get("http://localhost:4111/api/v1/customer/profile")
+                .then()
+                .assertThat()
+                .statusCode(HttpStatus.SC_OK)
+                .body(String.format("accounts.find { it.id == %d }.balance", accountId), equalTo(balance1));
+
+        // проверка того, что баланс получающего аккаунта не изменился
+        given()
+                .header("Authorization", userAuthHeader)
+                .accept(ContentType.JSON)
+                .get("http://localhost:4111/api/v1/customer/profile")
+                .then()
+                .assertThat()
+                .statusCode(HttpStatus.SC_OK)
+                .body(String.format("accounts.find { it.id == %d }.balance", secondAccountId), equalTo(balance2));
     }
 }
