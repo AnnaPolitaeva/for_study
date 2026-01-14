@@ -5,7 +5,6 @@ import io.restassured.filter.log.RequestLoggingFilter;
 import io.restassured.filter.log.ResponseLoggingFilter;
 import io.restassured.http.ContentType;
 import org.apache.http.HttpStatus;
-import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -18,7 +17,6 @@ import java.util.Locale;
 import java.util.stream.Stream;
 
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.closeTo;
 import static org.hamcrest.Matchers.equalTo;
 
 public class TransferMoneyByUserTest {
@@ -35,21 +33,21 @@ public class TransferMoneyByUserTest {
                         new ResponseLoggingFilter()));
 
         // создание пользователя
-//        given()
-//                .contentType(ContentType.JSON)
-//                .accept(ContentType.JSON)
-//                .header("Authorization", "Basic YWRtaW46YWRtaW4=")
-//                .body("""
-//                        {
-//                          "username": "Ann12345",
-//                          "password": "Ann12345!",
-//                          "role": "USER"
-//                        }
-//                        """)
-//                .post("http://localhost:4111/api/v1/admin/users")
-//                .then()
-//                .assertThat()
-//                .statusCode(HttpStatus.SC_CREATED);
+        given()
+                .contentType(ContentType.JSON)
+                .accept(ContentType.JSON)
+                .header("Authorization", "Basic YWRtaW46YWRtaW4=")
+                .body("""
+                        {
+                          "username": "Ann12345",
+                          "password": "Ann12345!",
+                          "role": "USER"
+                        }
+                        """)
+                .post("http://localhost:4111/api/v1/admin/users")
+                .then()
+                .assertThat()
+                .statusCode(HttpStatus.SC_CREATED);
 
         // получаем токен юзера
         userAuthHeader = given()
@@ -93,21 +91,21 @@ public class TransferMoneyByUserTest {
                 .path("id");
 
         // создание другого пользователя
-//        given()
-//                .contentType(ContentType.JSON)
-//                .accept(ContentType.JSON)
-//                .header("Authorization", "Basic YWRtaW46YWRtaW4=")
-//                .body("""
-//                        {
-//                          "username": "Ann54321",
-//                          "password": "Ann54321!",
-//                          "role": "USER"
-//                        }
-//                        """)
-//                .post("http://localhost:4111/api/v1/admin/users")
-//                .then()
-//                .assertThat()
-//                .statusCode(HttpStatus.SC_CREATED);
+        given()
+                .contentType(ContentType.JSON)
+                .accept(ContentType.JSON)
+                .header("Authorization", "Basic YWRtaW46YWRtaW4=")
+                .body("""
+                        {
+                          "username": "Ann54321",
+                          "password": "Ann54321!",
+                          "role": "USER"
+                        }
+                        """)
+                .post("http://localhost:4111/api/v1/admin/users")
+                .then()
+                .assertThat()
+                .statusCode(HttpStatus.SC_CREATED);
 
         // получаем токен другого юзера
         differentUserAuthHeader = given()
@@ -315,7 +313,7 @@ public class TransferMoneyByUserTest {
                 .body(String.format("accounts.find { it.id == %d }.balance", differentAccountId), equalTo(balance2 + 0.01F));
     }
 
-    public static Stream<Arguments> invalidData(){
+    public static Stream<Arguments> invalidData() {
         return Stream.of(
                 Arguments.of(10000.01, "Transfer amount cannot exceed 10000"),
                 Arguments.of(-0.01, "Transfer amount must be at least 0.01"),
