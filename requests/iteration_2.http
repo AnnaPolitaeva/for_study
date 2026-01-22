@@ -143,9 +143,14 @@ Content-Type: application/json
 Authorization: Basic QW5uMTIzNDU6QW5uMTIzNDUh
 
 {
-  "id": 1,
+  "id": 28,
   "balance": 4999.99
 }
+
+### Позитивный тест: пополнение аккаунта на сумму 4999.99
+GET http://localhost:4111/api/v1/customer/profile
+Content-Type: application/json
+Authorization: Basic QW5uMTIzNDU6QW5uMTIzNDUh
 
 ### Позитивный тест: пополнение аккаунта на сумму 5000
 POST http://localhost:4111/api/v1/accounts/deposit
@@ -244,9 +249,9 @@ Content-Type: application/json
 Authorization: Basic QW5uMTIzNDU6QW5uMTIzNDUh
 
 {
-  "senderAccountId": 1,
-  "receiverAccountId": 2,
-  "amount": 9999.99
+  "senderAccountId": 28,
+  "receiverAccountId": 29,
+  "amount": 99.99
 }
 
 ### Позитивный тест: перевод на свой счет суммы 10000
@@ -353,7 +358,7 @@ Content-Type: application/json
 Authorization: Basic QW5uMTIzNDU6QW5uMTIzNDUh
 
 {
-  "name": "Sara  Parker"
+  "name": "Sara Parker"
 }
 
 ### Негативный тест: изменение имени пользователя на Mike!Shein (с восклицательным знаком вместо пробела)

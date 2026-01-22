@@ -1,24 +1,22 @@
 package requests;
 
-
 import io.restassured.response.ValidatableResponse;
 import io.restassured.specification.RequestSpecification;
 import io.restassured.specification.ResponseSpecification;
-import models.LoginUserRequest;
+import models.BaseModel;
 
 import static io.restassured.RestAssured.given;
 
-public class LoginUserRequester extends RequestPost<LoginUserRequest> {
-    public LoginUserRequester(RequestSpecification requestSpecification, ResponseSpecification responseSpecification) {
+public class GetInfoRequester extends RequestGet{
+    public GetInfoRequester(RequestSpecification requestSpecification, ResponseSpecification responseSpecification) {
         super(requestSpecification, responseSpecification);
     }
 
     @Override
-    public ValidatableResponse post(LoginUserRequest model) {
+    public ValidatableResponse get(BaseModel model) {
         return given()
                 .spec(requestSpecification)
-                .body(model)
-                .post("/api/v1/auth/login")
+                .get("/api/v1/customer/profile")
                 .then()
                 .assertThat()
                 .spec(responseSpecification);
