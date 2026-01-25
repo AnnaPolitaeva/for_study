@@ -1,14 +1,15 @@
 package iteration2;
 
-import generators.RandomData;
 import iteration1.BaseTest;
 import models.*;
+import models.comparison.ModelAssertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import requests.AdminCreateUserRequester;
-import requests.ChangeNameRequester;
-import requests.GetInfoRequester;
+import requests.skeleton.Endpoint;
+import requests.skeleton.requesters.CrudRequester;
+import requests.skeleton.requesters.ValidatedCrudRequester;
+import requests.steps.AdminSteps;
 import specs.RequestSpecs;
 import specs.ResponseSpecs;
 
@@ -18,75 +19,62 @@ public class ChangeNameByUserTest extends BaseTest {
     public void UserCanChangeNameWithCorrectNameTest() {
 
         //создание пользователя
-        CreateUserRequest createUserRequest = CreateUserRequest.builder()
-                .username(RandomData.getUsername())
-                .password(RandomData.getPassword())
-                .role(UserRole.USER.toString())
-                .build();
-
-        new AdminCreateUserRequester(
-                RequestSpecs.adminSpec(),
-                ResponseSpecs.entityWasCreated())
-                .post(createUserRequest);
+        CreateUserRequest createUserRequest = AdminSteps.createUser().request();
 
         //изменение имени
         ChangeNameRequest changeNameRequest = ChangeNameRequest.builder()
                 .name("Bon Jovi")
                 .build();
 
-        new ChangeNameRequester(
+        new CrudRequester(
                 RequestSpecs.authAsUser(
                         createUserRequest.getUsername(),
                         createUserRequest.getPassword()),
+                Endpoint.CUSTOMER_PROFILE,
                 ResponseSpecs.requestReturnsOK("message", "Profile updated successfully"))
-                .post(changeNameRequest);
+                .update(changeNameRequest);
 
         // проверка того, что имя установилось
-        GetInfoResponse getInfoResponse = new GetInfoRequester(
+        GetInfoResponse getInfoResponse = new ValidatedCrudRequester<GetInfoResponse>(
                 RequestSpecs.authAsUser(
                         createUserRequest.getUsername(),
                         createUserRequest.getPassword()),
+                Endpoint.CUSTOMER_PROFILE_GET,
                 ResponseSpecs.requestReturnsOK())
-                .get(null).extract().as(GetInfoResponse.class);
+                .get(null);
 
-        softly.assertThat(getInfoResponse.getName()).isEqualTo("Bon Jovi"); // проверка что есть пометка об успешности запроса
+        ModelAssertions.assertThatModels(createUserRequest, getInfoResponse).match();
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"Ann 123", "Sara  Parker", "Mike!Shein", "David"})
     public void UserCanChangeNameWithIncorrectNameTest(String input) {
         //создание пользователя
-        CreateUserRequest createUserRequest = CreateUserRequest.builder()
-                .username(RandomData.getUsername())
-                .password(RandomData.getPassword())
-                .role(UserRole.USER.toString())
-                .build();
-
-        new AdminCreateUserRequester(
-                RequestSpecs.adminSpec(),
-                ResponseSpecs.entityWasCreated())
-                .post(createUserRequest);
+        CreateUserRequest createUserRequest = AdminSteps.createUser().request();
+        CreateUserResponse createUserResponse = AdminSteps.createUser().response();
 
         //изменение имени
         ChangeNameRequest changeNameRequest = ChangeNameRequest.builder()
                 .name(input)
                 .build();
 
-        new ChangeNameRequester(
+        new CrudRequester(
                 RequestSpecs.authAsUser(
                         createUserRequest.getUsername(),
                         createUserRequest.getPassword()),
+                Endpoint.CUSTOMER_PROFILE,
                 ResponseSpecs.requestReturnsBadRequest("Name must contain two words with letters only"))
-                .post(changeNameRequest);
+                .update(changeNameRequest);
 
-        // проверка того, что имя установилось
-        GetInfoResponse getInfoResponse = new GetInfoRequester(
+        // проверка того, что имя не установилось
+        GetInfoResponse getInfoResponse = new ValidatedCrudRequester<GetInfoResponse>(
                 RequestSpecs.authAsUser(
                         createUserRequest.getUsername(),
                         createUserRequest.getPassword()),
+                Endpoint.CUSTOMER_PROFILE_GET,
                 ResponseSpecs.requestReturnsOK())
-                .get(null).extract().as(GetInfoResponse.class);
+                .get(null);
 
-        softly.assertThat(getInfoResponse.getName()).isEqualTo(null); // проверка что есть пометка об успешности запроса
+        ModelAssertions.assertThatModels(createUserResponse, getInfoResponse).match();
     }
 }

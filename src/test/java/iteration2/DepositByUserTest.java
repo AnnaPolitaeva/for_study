@@ -1,6 +1,5 @@
 package iteration2;
 
-import generators.RandomData;
 import iteration1.BaseTest;
 import models.*;
 import org.junit.jupiter.api.Test;
@@ -8,10 +7,11 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import requests.AdminCreateUserRequester;
-import requests.CreateAccountRequester;
-import requests.DepositAccountRequester;
-import requests.GetInfoRequester;
+import requests.skeleton.Endpoint;
+import requests.skeleton.requesters.CrudRequester;
+import requests.skeleton.requesters.ValidatedCrudRequester;
+import requests.steps.AdminSteps;
+import requests.steps.UserSteps;
 import specs.RequestSpecs;
 import specs.ResponseSpecs;
 
@@ -22,25 +22,11 @@ public class DepositByUserTest extends BaseTest {
     @ParameterizedTest
     @ValueSource(floats = {4999.99F, 5000F, 0.01F})
     public void userCanDepositAccountWithCorrectAmountTest(float amount) {
-        CreateUserRequest createUserRequest = CreateUserRequest.builder()
-                .username(RandomData.getUsername())
-                .password(RandomData.getPassword())
-                .role(UserRole.USER.toString())
-                .build();
-
         //создание пользователя
-        new AdminCreateUserRequester(
-                RequestSpecs.adminSpec(),
-                ResponseSpecs.entityWasCreated())
-                .post(createUserRequest);
+        CreateUserRequest createUserRequest = AdminSteps.createUser().request();
 
         //создание аккаунта
-        CreateAccountResponse createAccountResponse = new CreateAccountRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                ResponseSpecs.entityWasCreated())
-                .post(null).extract().as(CreateAccountResponse.class);
+        CreateAccountResponse createAccountResponse = UserSteps.createAccount(createUserRequest);
 
         // осуществляем пополнение аккаунта
         DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
@@ -48,12 +34,13 @@ public class DepositByUserTest extends BaseTest {
                 .balance(amount)
                 .build();
 
-        DepositAccountResponse depositAccountResponse = new DepositAccountRequester(
+        DepositAccountResponse depositAccountResponse = new ValidatedCrudRequester<DepositAccountResponse>(
                 RequestSpecs.authAsUser(
                         createUserRequest.getUsername(),
                         createUserRequest.getPassword()),
+                Endpoint.ACCOUNT_DEPOSIT,
                 ResponseSpecs.requestReturnsOK())
-                .post(depositAccountRequest).extract().as(DepositAccountResponse.class);
+                .post(depositAccountRequest);
 
         softly.assertThat(createAccountResponse.getBalance() + amount).isEqualTo(depositAccountResponse.getBalance());
     }
@@ -70,25 +57,12 @@ public class DepositByUserTest extends BaseTest {
     @ParameterizedTest
     @MethodSource("invalidData")
     public void userCanDepositAccountWithInvalidAmountTest(float amount, String error) {
-        CreateUserRequest createUserRequest = CreateUserRequest.builder()
-                .username(RandomData.getUsername())
-                .password(RandomData.getPassword())
-                .role(UserRole.USER.toString())
-                .build();
 
         //создание пользователя
-        new AdminCreateUserRequester(
-                RequestSpecs.adminSpec(),
-                ResponseSpecs.entityWasCreated())
-                .post(createUserRequest);
+        CreateUserRequest createUserRequest = AdminSteps.createUser().request();
 
         //создание аккаунта
-        CreateAccountResponse createAccountResponse = new CreateAccountRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                ResponseSpecs.entityWasCreated())
-                .post(null).extract().as(CreateAccountResponse.class);
+        CreateAccountResponse createAccountResponse = UserSteps.createAccount(createUserRequest);
 
         // осуществляем пополнение аккаунта
         DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
@@ -96,18 +70,20 @@ public class DepositByUserTest extends BaseTest {
                 .balance(amount)
                 .build();
 
-        new DepositAccountRequester(
+        new CrudRequester(
                 RequestSpecs.authAsUser(
                         createUserRequest.getUsername(),
                         createUserRequest.getPassword()),
+                Endpoint.ACCOUNT_DEPOSIT,
                 ResponseSpecs.requestReturnsBadRequest(error))
                 .post(depositAccountRequest);
 
         // проверка того, что аккаунт не пополнился
-        new GetInfoRequester(
+        new CrudRequester(
                 RequestSpecs.authAsUser(
                         createUserRequest.getUsername(),
                         createUserRequest.getPassword()),
+                Endpoint.CUSTOMER_PROFILE_GET,
                 ResponseSpecs.requestReturnsOK(createAccountResponse.getId(), createAccountResponse.getBalance()))
                 .get(null);
     }
@@ -115,44 +91,16 @@ public class DepositByUserTest extends BaseTest {
     @Test
     public void userCanNotDepositDifferentAccountTest() {
         //создание пользователя
-        CreateUserRequest createUserRequest = CreateUserRequest.builder()
-                .username(RandomData.getUsername())
-                .password(RandomData.getPassword())
-                .role(UserRole.USER.toString())
-                .build();
-
-        new AdminCreateUserRequester(
-                RequestSpecs.adminSpec(),
-                ResponseSpecs.entityWasCreated())
-                .post(createUserRequest);
+        CreateUserRequest createUserRequest = AdminSteps.createUser().request();
 
         //создание аккаунта
-        CreateAccountResponse createAccountResponse = new CreateAccountRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                ResponseSpecs.entityWasCreated())
-                .post(null).extract().as(CreateAccountResponse.class);
+        UserSteps.createAccount(createUserRequest);
 
         //создание второго пользователя
-        CreateUserRequest createDifferentUserRequest = CreateUserRequest.builder()
-                .username(RandomData.getUsername())
-                .password(RandomData.getPassword())
-                .role(UserRole.USER.toString())
-                .build();
+        CreateUserRequest createDifferentUserRequest = AdminSteps.createUser().request();
 
-        new AdminCreateUserRequester(
-                RequestSpecs.adminSpec(),
-                ResponseSpecs.entityWasCreated())
-                .post(createDifferentUserRequest);
-
-        //создание аккаунта
-        CreateAccountResponse createAccountDifferentUserResponse = new CreateAccountRequester(
-                RequestSpecs.authAsUser(
-                        createDifferentUserRequest.getUsername(),
-                        createDifferentUserRequest.getPassword()),
-                ResponseSpecs.entityWasCreated())
-                .post(null).extract().as(CreateAccountResponse.class);
+        //создание аккаунта второго пользователя
+        CreateAccountResponse createAccountDifferentUserResponse = UserSteps.createAccount(createDifferentUserRequest);
 
         // осуществляем пополнение аккаунта
         DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
@@ -160,18 +108,20 @@ public class DepositByUserTest extends BaseTest {
                 .balance(2000F)
                 .build();
 
-        new DepositAccountRequester(
+        new CrudRequester(
                 RequestSpecs.authAsUser(
                         createUserRequest.getUsername(),
                         createUserRequest.getPassword()),
+                Endpoint.ACCOUNT_DEPOSIT,
                 ResponseSpecs.requestReturnsForbidden("Unauthorized access to account"))
                 .post(depositAccountRequest);
 
         // проверка того, что аккаунт не пополнился
-        new GetInfoRequester(
+        new CrudRequester(
                 RequestSpecs.authAsUser(
                         createDifferentUserRequest.getUsername(),
                         createDifferentUserRequest.getPassword()),
+                Endpoint.CUSTOMER_PROFILE_GET,
                 ResponseSpecs.requestReturnsOK(createAccountDifferentUserResponse.getId(), createAccountDifferentUserResponse.getBalance()))
                 .get(null);
     }
