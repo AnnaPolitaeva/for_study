@@ -1,13 +1,12 @@
-package iteration2;
+package iteration2.api;
 
-import iteration1.BaseTest;
+import iteration1.api.BaseTest;
 import models.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import requests.*;
 import requests.skeleton.Endpoint;
 import requests.skeleton.requesters.CrudRequester;
 import requests.skeleton.requesters.ValidatedCrudRequester;

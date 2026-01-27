@@ -1,6 +1,6 @@
-package iteration2;
+package iteration2.api;
 
-import iteration1.BaseTest;
+import iteration1.api.BaseTest;
 import models.*;
 import models.comparison.ModelAssertions;
 import org.junit.jupiter.api.Test;
