@@ -14,179 +14,45 @@ import specs.ResponseSpecs;
 
 import java.util.stream.Stream;
 
+import static io.qameta.allure.Allure.step;
+
 public class TransferMoneyByUserTest extends BaseTest {
 
     @ParameterizedTest
     @ValueSource(floats = {9999.99F, 10000F})
     public void userCanTransferCorrectAmountOnOwnAccountTest(float amount) {
-        //создание пользователя
-        CreateUserRequest createUserRequest = CreateUserRequest.builder()
-                .username(RandomData.getUsername())
-                .password(RandomData.getPassword())
-                .role(UserRole.USER.toString())
-                .build();
+        CreateUserRequest createUserRequest = createUser();
+        CreateAccountResponse createAccountResponse = createAccount(createUserRequest);
+        CreateAccountResponse createSecondAccountResponse = createAccount(createUserRequest);
+        depositAccount(createAccountResponse, 5000F, createUserRequest);
+        DepositAccountResponse depositAccountResponse = depositAccount(createAccountResponse, 5000F, createUserRequest);
+        TransferMoneyResponse transferMoneyResponse = transferMoneySuccessfully(createAccountResponse, createSecondAccountResponse, amount, createUserRequest);
 
-        new AdminCreateUserRequester(
-                RequestSpecs.adminSpec(),
-                ResponseSpecs.entityWasCreated())
-                .post(createUserRequest);
+        step("Step: Check response message", () -> {
+            softly.assertThat(transferMoneyResponse.getMessage()).isEqualTo("Transfer successful");
+        });
 
-        //создание аккаунта
-        CreateAccountResponse createAccountResponse = new CreateAccountRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                ResponseSpecs.entityWasCreated())
-                .post(null).extract().as(CreateAccountResponse.class);
-
-        //создание второго аккаунта
-        CreateAccountResponse createSecondAccountResponse = new CreateAccountRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                ResponseSpecs.entityWasCreated())
-                .post(null).extract().as(CreateAccountResponse.class);
-
-        // осуществляем пополнение аккаунта
-        DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
-                .id(createAccountResponse.getId())
-                .balance(5000F)
-                .build();
-
-        new DepositAccountRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                ResponseSpecs.requestReturnsOK())
-                .post(depositAccountRequest);
-
-        DepositAccountResponse depositAccountResponse = new DepositAccountRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                ResponseSpecs.requestReturnsOK())
-                .post(depositAccountRequest).extract().as(DepositAccountResponse.class);
-
-        // переводим сумму
-        TransferMoneyRequest transferMoneyRequest = TransferMoneyRequest.builder()
-                .senderAccountId(createAccountResponse.getId())
-                .receiverAccountId(createSecondAccountResponse.getId())
-                .amount(amount)
-                .build();
-
-        TransferMoneyResponse transferMoneyResponse = new TransferMoneyRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                ResponseSpecs.requestReturnsOK())
-                .put(transferMoneyRequest).extract().as(TransferMoneyResponse.class);
-
-        softly.assertThat(transferMoneyResponse.getMessage()).isEqualTo("Transfer successful");
-
-        // проверка того, что аккаунт пополнился
-        new GetInfoRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                ResponseSpecs.requestReturnsOK(createSecondAccountResponse.getId(), createSecondAccountResponse.getBalance() + amount))
-                .get(null);
-
-        // проверка того, что баланс на отправляющем аккаунте уменьшился
-        new GetInfoRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                ResponseSpecs.requestReturnsOK(createAccountResponse.getId(), Math.round((depositAccountResponse.getBalance() - amount) * 100) / 100.00f))
-                .get(null);
+        checkAccount(createUserRequest, createSecondAccountResponse.getId(), createSecondAccountResponse.getBalance() + amount);
+        checkAccount(createUserRequest, createAccountResponse.getId(), Math.round((depositAccountResponse.getBalance() - amount) * 100) / 100.00f);
     }
 
     @Test
     public void userCanTransferCorrectAmountOnAccountAnotherUserTest() {
-        //создание пользователя
-        CreateUserRequest createUserRequest = CreateUserRequest.builder()
-                .username(RandomData.getUsername())
-                .password(RandomData.getPassword())
-                .role(UserRole.USER.toString())
-                .build();
+        CreateUserRequest createUserRequest = createUser();
+        CreateAccountResponse createAccountResponse = createAccount(createUserRequest);
+        CreateUserRequest createDifferentUserRequest = createUser();
+        CreateAccountResponse createAccountDifferentUserResponse = createAccount(createDifferentUserRequest);
 
-        new AdminCreateUserRequester(
-                RequestSpecs.adminSpec(),
-                ResponseSpecs.entityWasCreated())
-                .post(createUserRequest);
+        DepositAccountResponse depositAccountResponse = depositAccount(createAccountResponse, 1F, createUserRequest);
 
-        //создание аккаунта
-        CreateAccountResponse createAccountResponse = new CreateAccountRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                ResponseSpecs.entityWasCreated())
-                .post(null).extract().as(CreateAccountResponse.class);
+        TransferMoneyResponse transferMoneyResponse = transferMoneySuccessfully(createAccountResponse, createAccountDifferentUserResponse, 0.01F, createUserRequest);
 
-        //создание второго пользователя
-        CreateUserRequest createDifferentUserRequest = CreateUserRequest.builder()
-                .username(RandomData.getUsername())
-                .password(RandomData.getPassword())
-                .role(UserRole.USER.toString())
-                .build();
+        step("Step: Check response message", () -> {
+            softly.assertThat(transferMoneyResponse.getMessage()).isEqualTo("Transfer successful");
+        });
 
-        new AdminCreateUserRequester(
-                RequestSpecs.adminSpec(),
-                ResponseSpecs.entityWasCreated())
-                .post(createDifferentUserRequest);
-
-        //создание аккаунта у второго пользователя
-        CreateAccountResponse createAccountDifferentUserResponse = new CreateAccountRequester(
-                RequestSpecs.authAsUser(
-                        createDifferentUserRequest.getUsername(),
-                        createDifferentUserRequest.getPassword()),
-                ResponseSpecs.entityWasCreated())
-                .post(null).extract().as(CreateAccountResponse.class);
-
-        // осуществляем пополнение аккаунта
-        DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
-                .id(createAccountResponse.getId())
-                .balance(1F)
-                .build();
-
-        DepositAccountResponse depositAccountResponse = new DepositAccountRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                ResponseSpecs.requestReturnsOK())
-                .post(depositAccountRequest).extract().as(DepositAccountResponse.class);
-
-        // переводим сумму
-        TransferMoneyRequest transferMoneyRequest = TransferMoneyRequest.builder()
-                .senderAccountId(createAccountResponse.getId())
-                .receiverAccountId(createAccountDifferentUserResponse.getId())
-                .amount(0.01F)
-                .build();
-
-        TransferMoneyResponse transferMoneyResponse = new TransferMoneyRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                ResponseSpecs.requestReturnsOK())
-                .put(transferMoneyRequest).extract().as(TransferMoneyResponse.class);
-
-        softly.assertThat(transferMoneyResponse.getMessage()).isEqualTo("Transfer successful");
-
-
-        // проверка того, что аккаунт пополнился
-        new GetInfoRequester(
-                RequestSpecs.authAsUser(
-                        createDifferentUserRequest.getUsername(),
-                        createDifferentUserRequest.getPassword()),
-                ResponseSpecs.requestReturnsOK(createAccountDifferentUserResponse.getId(), createAccountDifferentUserResponse.getBalance() + 0.01F))
-                .get(null);
-
-        // проверка того, что баланс на отправляющем аккаунте уменьшился
-        new GetInfoRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                ResponseSpecs.requestReturnsOK(createAccountResponse.getId(), depositAccountResponse.getBalance() - 0.01F))
-                .get(null);
+        checkAccount(createUserRequest, createAccountDifferentUserResponse.getId(), createAccountDifferentUserResponse.getBalance() + 0.01F);
+        checkAccount(createUserRequest, createAccountResponse.getId(), depositAccountResponse.getBalance() - 0.01F);
 
     }
 
@@ -201,151 +67,115 @@ public class TransferMoneyByUserTest extends BaseTest {
     @ParameterizedTest
     @MethodSource("invalidData")
     public void userCanNotTransferInvalidAmountTest(float amount, String error) {
-        //создание пользователя
-        CreateUserRequest createUserRequest = CreateUserRequest.builder()
-                .username(RandomData.getUsername())
-                .password(RandomData.getPassword())
-                .role(UserRole.USER.toString())
-                .build();
+        CreateUserRequest createUserRequest = createUser();
+        CreateAccountResponse createAccountResponse = createAccount(createUserRequest);
+        CreateAccountResponse createSecondAccountResponse = createAccount(createUserRequest);
+        depositAccount(createAccountResponse, 5000F, createUserRequest);
+        depositAccount(createAccountResponse, 5000F, createUserRequest);
+        DepositAccountResponse depositAccountResponse = depositAccount(createAccountResponse, 5000F, createUserRequest);
 
-        new AdminCreateUserRequester(
-                RequestSpecs.adminSpec(),
-                ResponseSpecs.entityWasCreated())
-                .post(createUserRequest);
-
-        //создание аккаунта
-        CreateAccountResponse createAccountResponse = new CreateAccountRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                ResponseSpecs.entityWasCreated())
-                .post(null).extract().as(CreateAccountResponse.class);
-
-        //создание второго аккаунта
-        CreateAccountResponse createSecondAccountResponse = new CreateAccountRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                ResponseSpecs.entityWasCreated())
-                .post(null).extract().as(CreateAccountResponse.class);
-
-        // осуществляем пополнение аккаунта
-        DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
-                .id(createAccountResponse.getId())
-                .balance(5000F)
-                .build();
-
-        new DepositAccountRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                ResponseSpecs.requestReturnsOK())
-                .post(depositAccountRequest);
-
-        new DepositAccountRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                ResponseSpecs.requestReturnsOK())
-                .post(depositAccountRequest);
-
-        DepositAccountResponse depositAccountResponse = new DepositAccountRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                ResponseSpecs.requestReturnsOK())
-                .post(depositAccountRequest).extract().as(DepositAccountResponse.class);
-
-        // переводим сумму
-        TransferMoneyRequest transferMoneyRequest = TransferMoneyRequest.builder()
-                .senderAccountId(createAccountResponse.getId())
-                .receiverAccountId(createSecondAccountResponse.getId())
-                .amount(amount)
-                .build();
-
-        new TransferMoneyRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                ResponseSpecs.requestReturnsBadRequest(error))
-                .put(transferMoneyRequest);
-
-        // проверка того, что аккаунт не пополнился
-        new GetInfoRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                ResponseSpecs.requestReturnsOK(createSecondAccountResponse.getId(), createSecondAccountResponse.getBalance()))
-                .get(null);
-
-        // проверка того, что баланс на отправляющем аккаунте не уменьшился
-        new GetInfoRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                ResponseSpecs.requestReturnsOK(createAccountResponse.getId(), depositAccountResponse.getBalance()))
-                .get(null);
+        transferMoneyWithError(createAccountResponse, createSecondAccountResponse, amount, createUserRequest, error);
+        checkAccount(createUserRequest, createSecondAccountResponse.getId(), createSecondAccountResponse.getBalance());
+        checkAccount(createUserRequest, createAccountResponse.getId(), depositAccountResponse.getBalance());
     }
 
     @Test
     public void userCanNotTransferAmountMoreThenBalanceTest() {
 
-        //создание пользователя
-        CreateUserRequest createUserRequest = CreateUserRequest.builder()
-                .username(RandomData.getUsername())
-                .password(RandomData.getPassword())
-                .role(UserRole.USER.toString())
-                .build();
+        CreateUserRequest createUserRequest = createUser();
+        CreateAccountResponse createAccountResponse = createAccount(createUserRequest);
+        CreateAccountResponse createSecondAccountResponse = createAccount(createUserRequest);
 
-        new AdminCreateUserRequester(
-                RequestSpecs.adminSpec(),
-                ResponseSpecs.entityWasCreated())
-                .post(createUserRequest);
+        transferMoneyWithError(createAccountResponse, createSecondAccountResponse, 6000F, createUserRequest, "Invalid transfer: insufficient funds or invalid accounts");
+        checkAccount(createUserRequest, createSecondAccountResponse.getId(), createSecondAccountResponse.getBalance());
+        checkAccount(createUserRequest, createAccountResponse.getId(), createSecondAccountResponse.getBalance());
+    }
 
-        //создание аккаунта
-        CreateAccountResponse createAccountResponse = new CreateAccountRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                ResponseSpecs.entityWasCreated())
-                .post(null).extract().as(CreateAccountResponse.class);
+    private CreateUserRequest createUser(){
+        return step("Step: Create user", () -> {
+            CreateUserRequest createUserRequest = CreateUserRequest.builder()
+                    .username(RandomData.getUsername())
+                    .password(RandomData.getPassword())
+                    .role(UserRole.USER.toString())
+                    .build();
 
-        //создание второго аккаунта
-        CreateAccountResponse createSecondAccountResponse = new CreateAccountRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                ResponseSpecs.entityWasCreated())
-                .post(null).extract().as(CreateAccountResponse.class);
+            new AdminCreateUserRequester(
+                    RequestSpecs.adminSpec(),
+                    ResponseSpecs.entityWasCreated())
+                    .post(createUserRequest);
+            return createUserRequest;
+        });
+    }
 
-        // переводим сумму
-        TransferMoneyRequest transferMoneyRequest = TransferMoneyRequest.builder()
-                .senderAccountId(createAccountResponse.getId())
-                .receiverAccountId(createSecondAccountResponse.getId())
-                .amount(6000F)
-                .build();
+    private CreateAccountResponse createAccount(CreateUserRequest createUserRequest) {
+        return step("Step: Create account", () -> {
+            return new CreateAccountRequester(
+                    RequestSpecs.authAsUser(
+                            createUserRequest.getUsername(),
+                            createUserRequest.getPassword()),
+                    ResponseSpecs.entityWasCreated())
+                    .post().extract().as(CreateAccountResponse.class);
+        });
+    }
 
-        new TransferMoneyRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                ResponseSpecs.requestReturnsBadRequest("Invalid transfer: insufficient funds or invalid accounts"))
-                .put(transferMoneyRequest);
+    private DepositAccountResponse depositAccount(CreateAccountResponse createAccountResponse, float amount, CreateUserRequest createUserRequest){
+        return step("Step: Deposit Account With Correct Amount", () -> {
+            DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
+                    .id(createAccountResponse.getId())
+                    .balance(amount)
+                    .build();
 
-        // проверка того, что аккаунт не пополнился
-        new GetInfoRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                ResponseSpecs.requestReturnsOK(createSecondAccountResponse.getId(), createSecondAccountResponse.getBalance()))
-                .get(null);
+            return new DepositAccountRequester(
+                    RequestSpecs.authAsUser(
+                            createUserRequest.getUsername(),
+                            createUserRequest.getPassword()),
+                    ResponseSpecs.requestReturnsOK())
+                    .post(depositAccountRequest).extract().as(DepositAccountResponse.class);
+        });
+    }
 
-        // проверка того, что баланс на отправляющем аккаунте не уменьшился
-        new GetInfoRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                ResponseSpecs.requestReturnsOK(createAccountResponse.getId(), createSecondAccountResponse.getBalance()))
-                .get(null);
+    private TransferMoneyResponse transferMoneySuccessfully(CreateAccountResponse createAccountResponse, CreateAccountResponse createSecondAccountResponse, float amount, CreateUserRequest createUserRequest){
+        return step("Step: Transfer Money", () -> {
+            TransferMoneyRequest transferMoneyRequest = TransferMoneyRequest.builder()
+                    .senderAccountId(createAccountResponse.getId())
+                    .receiverAccountId(createSecondAccountResponse.getId())
+                    .amount(amount)
+                    .build();
+
+            return new TransferMoneyRequester(
+                    RequestSpecs.authAsUser(
+                            createUserRequest.getUsername(),
+                            createUserRequest.getPassword()),
+                    ResponseSpecs.requestReturnsOK())
+                    .put(transferMoneyRequest).extract().as(TransferMoneyResponse.class);
+        });
+    }
+
+    private void transferMoneyWithError(CreateAccountResponse createAccountResponse, CreateAccountResponse createSecondAccountResponse, float amount, CreateUserRequest createUserRequest, String error){
+        step("Step: Transfer Money", () -> {
+            TransferMoneyRequest transferMoneyRequest = TransferMoneyRequest.builder()
+                    .senderAccountId(createAccountResponse.getId())
+                    .receiverAccountId(createSecondAccountResponse.getId())
+                    .amount(amount)
+                    .build();
+
+            new TransferMoneyRequester(
+                    RequestSpecs.authAsUser(
+                            createUserRequest.getUsername(),
+                            createUserRequest.getPassword()),
+                    ResponseSpecs.requestReturnsBadRequest(error))
+                    .put(transferMoneyRequest);
+        });
+    }
+
+    private void checkAccount(CreateUserRequest createUserRequest,long accountId, float expectedBalance) {
+        step("Step: Check account balance", () -> {
+            new GetInfoRequester(
+                    RequestSpecs.authAsUser(
+                            createUserRequest.getUsername(),
+                            createUserRequest.getPassword()),
+                    ResponseSpecs.requestReturnsOK(accountId, expectedBalance))
+                    .get();
+        });
     }
 }

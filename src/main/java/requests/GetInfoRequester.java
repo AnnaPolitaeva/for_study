@@ -21,4 +21,13 @@ public class GetInfoRequester extends RequestGet{
                 .assertThat()
                 .spec(responseSpecification);
     }
+
+    public ValidatableResponse get() {
+        return given()
+                .spec(requestSpecification)
+                .get("/api/v1/customer/profile")
+                .then()
+                .assertThat()
+                .spec(responseSpecification);
+    }
 }

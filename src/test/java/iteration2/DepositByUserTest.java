@@ -1,6 +1,7 @@
 package iteration2;
 
 import generators.RandomData;
+import io.qameta.allure.Description;
 import iteration1.BaseTest;
 import models.*;
 import org.junit.jupiter.api.Test;
@@ -17,45 +18,24 @@ import specs.ResponseSpecs;
 
 import java.util.stream.Stream;
 
+import static io.qameta.allure.Allure.step;
+
 public class DepositByUserTest extends BaseTest {
 
     @ParameterizedTest
     @ValueSource(floats = {4999.99F, 5000F, 0.01F})
     public void userCanDepositAccountWithCorrectAmountTest(float amount) {
-        CreateUserRequest createUserRequest = CreateUserRequest.builder()
-                .username(RandomData.getUsername())
-                .password(RandomData.getPassword())
-                .role(UserRole.USER.toString())
-                .build();
 
-        //создание пользователя
-        new AdminCreateUserRequester(
-                RequestSpecs.adminSpec(),
-                ResponseSpecs.entityWasCreated())
-                .post(createUserRequest);
+        CreateUserRequest createUserRequest = createUser();
+        CreateAccountResponse createAccountResponse = createAccount(createUserRequest);
 
-        //создание аккаунта
-        CreateAccountResponse createAccountResponse = new CreateAccountRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                ResponseSpecs.entityWasCreated())
-                .post(null).extract().as(CreateAccountResponse.class);
+        DepositAccountResponse depositAccountResponse = depositAccountCorrectAmount(createAccountResponse, amount, createUserRequest);
 
-        // осуществляем пополнение аккаунта
-        DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
-                .id(createAccountResponse.getId())
-                .balance(amount)
-                .build();
+        step("Step: Check account balance", () -> {
+            softly.assertThat(createAccountResponse.getBalance() + amount).isEqualTo(depositAccountResponse.getBalance());
+        });
 
-        DepositAccountResponse depositAccountResponse = new DepositAccountRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                ResponseSpecs.requestReturnsOK())
-                .post(depositAccountRequest).extract().as(DepositAccountResponse.class);
 
-        softly.assertThat(createAccountResponse.getBalance() + amount).isEqualTo(depositAccountResponse.getBalance());
     }
 
     public static Stream<Arguments> invalidData() {
@@ -69,110 +49,91 @@ public class DepositByUserTest extends BaseTest {
 
     @ParameterizedTest
     @MethodSource("invalidData")
-    public void userCanDepositAccountWithInvalidAmountTest(float amount, String error) {
-        CreateUserRequest createUserRequest = CreateUserRequest.builder()
-                .username(RandomData.getUsername())
-                .password(RandomData.getPassword())
-                .role(UserRole.USER.toString())
-                .build();
-
-        //создание пользователя
-        new AdminCreateUserRequester(
-                RequestSpecs.adminSpec(),
-                ResponseSpecs.entityWasCreated())
-                .post(createUserRequest);
-
-        //создание аккаунта
-        CreateAccountResponse createAccountResponse = new CreateAccountRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                ResponseSpecs.entityWasCreated())
-                .post(null).extract().as(CreateAccountResponse.class);
-
-        // осуществляем пополнение аккаунта
-        DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
-                .id(createAccountResponse.getId())
-                .balance(amount)
-                .build();
-
-        new DepositAccountRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                ResponseSpecs.requestReturnsBadRequest(error))
-                .post(depositAccountRequest);
-
-        // проверка того, что аккаунт не пополнился
-        new GetInfoRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                ResponseSpecs.requestReturnsOK(createAccountResponse.getId(), createAccountResponse.getBalance()))
-                .get(null);
+    @Description("User Can Not Deposit Account With Invalid Amount")
+    public void userCanNotDepositAccountWithInvalidAmountTest(float amount, String error) {
+        CreateUserRequest createUserRequest = createUser();
+        CreateAccountResponse createAccountResponse = createAccount(createUserRequest);
+        depositAccountIncorrectAmount(createAccountResponse, amount, createUserRequest, error);
+        checkAccount(createUserRequest, createAccountResponse);
     }
 
     @Test
     public void userCanNotDepositDifferentAccountTest() {
-        //создание пользователя
-        CreateUserRequest createUserRequest = CreateUserRequest.builder()
-                .username(RandomData.getUsername())
-                .password(RandomData.getPassword())
-                .role(UserRole.USER.toString())
-                .build();
+        CreateUserRequest createUserRequest = createUser();
+        CreateAccountResponse createAccountResponse = createAccount(createUserRequest);
 
-        new AdminCreateUserRequester(
-                RequestSpecs.adminSpec(),
-                ResponseSpecs.entityWasCreated())
-                .post(createUserRequest);
+        CreateUserRequest createDifferentUserRequest = createUser();
+        CreateAccountResponse createAccountDifferentUserResponse = createAccount(createDifferentUserRequest);
+        depositAccountIncorrectAmount(createAccountDifferentUserResponse, 2000F, createUserRequest, "Unauthorized access to account");
+        checkAccount(createDifferentUserRequest, createAccountDifferentUserResponse);
 
-        //создание аккаунта
-        CreateAccountResponse createAccountResponse = new CreateAccountRequester(
+    }
+
+    private CreateUserRequest createUser(){
+        return step("Step: Create user", () -> {
+            CreateUserRequest createUserRequest = CreateUserRequest.builder()
+                    .username(RandomData.getUsername())
+                    .password(RandomData.getPassword())
+                    .role(UserRole.USER.toString())
+                    .build();
+
+            new AdminCreateUserRequester(
+                    RequestSpecs.adminSpec(),
+                    ResponseSpecs.entityWasCreated())
+                    .post(createUserRequest);
+            return createUserRequest;
+        });
+    }
+
+    private CreateAccountResponse createAccount(CreateUserRequest createUserRequest) {
+        return step("Step: Create account", () -> new CreateAccountRequester(
                 RequestSpecs.authAsUser(
                         createUserRequest.getUsername(),
                         createUserRequest.getPassword()),
                 ResponseSpecs.entityWasCreated())
-                .post(null).extract().as(CreateAccountResponse.class);
+                .post().extract().as(CreateAccountResponse.class));
+    }
 
-        //создание второго пользователя
-        CreateUserRequest createDifferentUserRequest = CreateUserRequest.builder()
-                .username(RandomData.getUsername())
-                .password(RandomData.getPassword())
-                .role(UserRole.USER.toString())
-                .build();
+    private DepositAccountResponse depositAccountCorrectAmount(CreateAccountResponse createAccountResponse, float amount, CreateUserRequest createUserRequest){
+        return step("Step: Deposit Account With Correct Amount", () -> {
+            DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
+                    .id(createAccountResponse.getId())
+                    .balance(amount)
+                    .build();
 
-        new AdminCreateUserRequester(
-                RequestSpecs.adminSpec(),
-                ResponseSpecs.entityWasCreated())
-                .post(createDifferentUserRequest);
+            return new DepositAccountRequester(
+                    RequestSpecs.authAsUser(
+                            createUserRequest.getUsername(),
+                            createUserRequest.getPassword()),
+                    ResponseSpecs.requestReturnsOK())
+                    .post(depositAccountRequest).extract().as(DepositAccountResponse.class);
+        });
+    }
 
-        //создание аккаунта
-        CreateAccountResponse createAccountDifferentUserResponse = new CreateAccountRequester(
-                RequestSpecs.authAsUser(
-                        createDifferentUserRequest.getUsername(),
-                        createDifferentUserRequest.getPassword()),
-                ResponseSpecs.entityWasCreated())
-                .post(null).extract().as(CreateAccountResponse.class);
+    private void depositAccountIncorrectAmount(CreateAccountResponse createAccountResponse, float amount, CreateUserRequest createUserRequest, String error){
+        step("Step: Deposit Account With Incorrect Amount", () -> {
+            DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
+                    .id(createAccountResponse.getId())
+                    .balance(amount)
+                    .build();
 
-        // осуществляем пополнение аккаунта
-        DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
-                .id(createAccountDifferentUserResponse.getId())
-                .balance(2000F)
-                .build();
+            new DepositAccountRequester(
+                    RequestSpecs.authAsUser(
+                            createUserRequest.getUsername(),
+                            createUserRequest.getPassword()),
+                    ResponseSpecs.requestReturnsBadRequest(error))
+                    .post(depositAccountRequest);
+        });
+    }
 
-        new DepositAccountRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                ResponseSpecs.requestReturnsForbidden("Unauthorized access to account"))
-                .post(depositAccountRequest);
-
-        // проверка того, что аккаунт не пополнился
-        new GetInfoRequester(
-                RequestSpecs.authAsUser(
-                        createDifferentUserRequest.getUsername(),
-                        createDifferentUserRequest.getPassword()),
-                ResponseSpecs.requestReturnsOK(createAccountDifferentUserResponse.getId(), createAccountDifferentUserResponse.getBalance()))
-                .get(null);
+    private void checkAccount(CreateUserRequest createUserRequest, CreateAccountResponse createAccountResponse) {
+        step("Step: Check account balance", () -> {
+            new GetInfoRequester(
+                    RequestSpecs.authAsUser(
+                            createUserRequest.getUsername(),
+                            createUserRequest.getPassword()),
+                    ResponseSpecs.requestReturnsOK(createAccountResponse.getId(), createAccountResponse.getBalance()))
+                    .get();
+        });
     }
 }

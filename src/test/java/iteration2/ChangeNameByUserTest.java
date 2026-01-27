@@ -12,81 +12,81 @@ import requests.GetInfoRequester;
 import specs.RequestSpecs;
 import specs.ResponseSpecs;
 
+import static io.qameta.allure.Allure.step;
+
 public class ChangeNameByUserTest extends BaseTest {
 
     @Test
     public void UserCanChangeNameWithCorrectNameTest() {
-
-        //создание пользователя
-        CreateUserRequest createUserRequest = CreateUserRequest.builder()
-                .username(RandomData.getUsername())
-                .password(RandomData.getPassword())
-                .role(UserRole.USER.toString())
-                .build();
-
-        new AdminCreateUserRequester(
-                RequestSpecs.adminSpec(),
-                ResponseSpecs.entityWasCreated())
-                .post(createUserRequest);
-
-        //изменение имени
-        ChangeNameRequest changeNameRequest = ChangeNameRequest.builder()
-                .name("Bon Jovi")
-                .build();
-
-        new ChangeNameRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                ResponseSpecs.requestReturnsOK("message", "Profile updated successfully"))
-                .post(changeNameRequest);
-
-        // проверка того, что имя установилось
-        GetInfoResponse getInfoResponse = new GetInfoRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                ResponseSpecs.requestReturnsOK())
-                .get(null).extract().as(GetInfoResponse.class);
-
-        softly.assertThat(getInfoResponse.getName()).isEqualTo("Bon Jovi"); // проверка что есть пометка об успешности запроса
+        CreateUserRequest createUserRequest = createUser();
+        changeNameCorrect(createUserRequest, "Bon Jovi");
+        checkName(createUserRequest, "Bon Jovi");
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"Ann 123", "Sara  Parker", "Mike!Shein", "David"})
     public void UserCanChangeNameWithIncorrectNameTest(String input) {
-        //создание пользователя
-        CreateUserRequest createUserRequest = CreateUserRequest.builder()
-                .username(RandomData.getUsername())
-                .password(RandomData.getPassword())
-                .role(UserRole.USER.toString())
-                .build();
+        CreateUserRequest createUserRequest = createUser();
+        changeNameIncorrect(createUserRequest, input);
+        checkName(createUserRequest, null);
+    }
 
-        new AdminCreateUserRequester(
-                RequestSpecs.adminSpec(),
-                ResponseSpecs.entityWasCreated())
-                .post(createUserRequest);
+    private CreateUserRequest createUser(){
+        return step("Step: Create user", () -> {
+            CreateUserRequest createUserRequest = CreateUserRequest.builder()
+                    .username(RandomData.getUsername())
+                    .password(RandomData.getPassword())
+                    .role(UserRole.USER.toString())
+                    .build();
 
-        //изменение имени
-        ChangeNameRequest changeNameRequest = ChangeNameRequest.builder()
-                .name(input)
-                .build();
+            new AdminCreateUserRequester(
+                    RequestSpecs.adminSpec(),
+                    ResponseSpecs.entityWasCreated())
+                    .post(createUserRequest);
+            return createUserRequest;
+        });
+    }
 
-        new ChangeNameRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                ResponseSpecs.requestReturnsBadRequest("Name must contain two words with letters only"))
-                .post(changeNameRequest);
+    private void changeNameCorrect(CreateUserRequest createUserRequest, String name){
+        step("Step: Change Name With Correct value", () -> {
+            ChangeNameRequest changeNameRequest = ChangeNameRequest.builder()
+                    .name(name)
+                    .build();
 
-        // проверка того, что имя установилось
-        GetInfoResponse getInfoResponse = new GetInfoRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                ResponseSpecs.requestReturnsOK())
-                .get(null).extract().as(GetInfoResponse.class);
+            new ChangeNameRequester(
+                    RequestSpecs.authAsUser(
+                            createUserRequest.getUsername(),
+                            createUserRequest.getPassword()),
+                    ResponseSpecs.requestReturnsOK("message", "Profile updated successfully"))
+                    .post(changeNameRequest);
+        });
+    }
 
-        softly.assertThat(getInfoResponse.getName()).isEqualTo(null); // проверка что есть пометка об успешности запроса
+    private void changeNameIncorrect(CreateUserRequest createUserRequest, String name){
+        step("Step: Change Name With Incorrect value", () -> {
+            ChangeNameRequest changeNameRequest = ChangeNameRequest.builder()
+                    .name(name)
+                    .build();
+
+            new ChangeNameRequester(
+                    RequestSpecs.authAsUser(
+                            createUserRequest.getUsername(),
+                            createUserRequest.getPassword()),
+                    ResponseSpecs.requestReturnsBadRequest("Name must contain two words with letters only"))
+                    .post(changeNameRequest);
+        });
+    }
+
+    private void checkName(CreateUserRequest createUserRequest, String expectedName){
+        step("Step: Change Name With Incorrect value", () -> {
+            GetInfoResponse getInfoResponse = new GetInfoRequester(
+                    RequestSpecs.authAsUser(
+                            createUserRequest.getUsername(),
+                            createUserRequest.getPassword()),
+                    ResponseSpecs.requestReturnsOK())
+                    .get().extract().as(GetInfoResponse.class);
+
+            softly.assertThat(getInfoResponse.getName()).isEqualTo(expectedName);
+        });
     }
 }
