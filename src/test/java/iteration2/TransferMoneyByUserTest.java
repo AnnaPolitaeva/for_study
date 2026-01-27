@@ -51,7 +51,7 @@ public class TransferMoneyByUserTest extends BaseTest {
             softly.assertThat(transferMoneyResponse.getMessage()).isEqualTo("Transfer successful");
         });
 
-        checkAccount(createUserRequest, createAccountDifferentUserResponse.getId(), createAccountDifferentUserResponse.getBalance() + 0.01F);
+        checkAccount(createDifferentUserRequest, createAccountDifferentUserResponse.getId(), createAccountDifferentUserResponse.getBalance() + 0.01F);
         checkAccount(createUserRequest, createAccountResponse.getId(), depositAccountResponse.getBalance() - 0.01F);
 
     }
