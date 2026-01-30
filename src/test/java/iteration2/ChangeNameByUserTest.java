@@ -57,7 +57,7 @@ public class ChangeNameByUserTest extends BaseTest {
                     RequestSpecs.authAsUser(
                             createUserRequest.getUsername(),
                             createUserRequest.getPassword()),
-                    ResponseSpecs.requestReturnsOK("message", "Profile updated successfully"))
+                    ResponseSpecs.requestReturnsOKAndMessageSuccess())
                     .post(changeNameRequest);
         });
     }
@@ -72,7 +72,7 @@ public class ChangeNameByUserTest extends BaseTest {
                     RequestSpecs.authAsUser(
                             createUserRequest.getUsername(),
                             createUserRequest.getPassword()),
-                    ResponseSpecs.requestReturnsBadRequest("Name must contain two words with letters only"))
+                    ResponseSpecs.requestReturnsBadRequestForChangeName())
                     .post(changeNameRequest);
         });
     }
