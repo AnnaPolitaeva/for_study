@@ -33,6 +33,13 @@ public class ResponseSpecs {
                 .build();
     }
 
+    public static ResponseSpecification requestReturnsOKForChangeName() {
+        return defaultResponseBuilder()
+                .expectStatusCode(HttpStatus.SC_OK)
+                .expectBody("message", equalTo("Profile updated successfully"))
+                .build();
+    }
+
     public static ResponseSpecification requestReturnsOK(long accountId, float balance) {
         return defaultResponseBuilder()
                 .expectStatusCode(HttpStatus.SC_OK)

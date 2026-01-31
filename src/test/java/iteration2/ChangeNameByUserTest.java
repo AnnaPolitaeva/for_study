@@ -31,7 +31,7 @@ public class ChangeNameByUserTest extends BaseTest {
                         createUserRequest.getUsername(),
                         createUserRequest.getPassword()),
                 Endpoint.CUSTOMER_PROFILE,
-                ResponseSpecs.requestReturnsOK("message", "Profile updated successfully"))
+                ResponseSpecs.requestReturnsOKForChangeName())
                 .update(changeNameRequest);
 
         // проверка того, что имя установилось
@@ -63,7 +63,7 @@ public class ChangeNameByUserTest extends BaseTest {
                         createUserRequest.getUsername(),
                         createUserRequest.getPassword()),
                 Endpoint.CUSTOMER_PROFILE,
-                ResponseSpecs.requestReturnsBadRequest("Name must contain two words with letters only"))
+                ResponseSpecs.requestReturnsBadRequest(ApiAtributesOfResponse.ERROR_UPDATE_USERNAME))
                 .update(changeNameRequest);
 
         // проверка того, что имя не установилось

@@ -7,7 +7,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import requests.*;
 import requests.skeleton.Endpoint;
 import requests.skeleton.requesters.CrudRequester;
 import requests.skeleton.requesters.ValidatedCrudRequester;
@@ -50,7 +49,7 @@ public class TransferMoneyByUserTest extends BaseTest {
                 ResponseSpecs.requestReturnsOK())
                 .post(transferMoneyRequest);
 
-        softly.assertThat(transferMoneyResponse.getMessage()).isEqualTo("Transfer successful");
+        softly.assertThat(transferMoneyResponse.getMessage()).isEqualTo(ApiAtributesOfResponse.TRANSFER_SUCCESS);
 
         // проверка того, что аккаунт пополнился
         UserSteps.checkBalance(createUserRequest, createSecondAccountResponse.getId(), createSecondAccountResponse.getBalance() + amount);
@@ -88,7 +87,7 @@ public class TransferMoneyByUserTest extends BaseTest {
                         createUserRequest.getUsername(),
                         createUserRequest.getPassword()),
                 Endpoint.ACCOUNT_TRANSFER,
-                ResponseSpecs.requestReturnsOK("message", "Transfer successful"))
+                ResponseSpecs.requestReturnsOK(ApiAtributesOfResponse.MESSAGE_KEY, ApiAtributesOfResponse.TRANSFER_SUCCESS))
                 .post(transferMoneyRequest);
 
         // проверка того, что аккаунт пополнился
@@ -168,7 +167,7 @@ public class TransferMoneyByUserTest extends BaseTest {
                         createUserRequest.getUsername(),
                         createUserRequest.getPassword()),
                 Endpoint.ACCOUNT_TRANSFER,
-                ResponseSpecs.requestReturnsBadRequest("Invalid transfer: insufficient funds or invalid accounts"))
+                ResponseSpecs.requestReturnsBadRequest(ApiAtributesOfResponse.ERROR_TRANSFER))
                 .post(transferMoneyRequest);
 
         // проверка того, что аккаунт не пополнился

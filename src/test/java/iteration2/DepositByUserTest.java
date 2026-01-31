@@ -113,7 +113,7 @@ public class DepositByUserTest extends BaseTest {
                         createUserRequest.getUsername(),
                         createUserRequest.getPassword()),
                 Endpoint.ACCOUNT_DEPOSIT,
-                ResponseSpecs.requestReturnsForbidden("Unauthorized access to account"))
+                ResponseSpecs.requestReturnsForbidden(ApiAtributesOfResponse.ERROR_UNAUTHORISED))
                 .post(depositAccountRequest);
 
         // проверка того, что аккаунт не пополнился
