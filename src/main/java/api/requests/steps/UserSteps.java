@@ -86,4 +86,11 @@ public class UserSteps {
                 Endpoint.CUSTOMER_ACCOUNTS,
                 ResponseSpecs.requestReturnsOK()).getAll(CreateAccountResponse[].class);
     }
+
+    public GetInfoResponse getUserInfo(){
+        return new ValidatedCrudRequester<GetInfoResponse>(
+                RequestSpecs.authAsUser(username, password),
+                Endpoint.CUSTOMER_PROFILE,
+                ResponseSpecs.requestReturnsOK()).get();
+    }
 }

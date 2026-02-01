@@ -4,6 +4,7 @@ import com.codeborne.selenide.*;
 import api.models.CreateAccountResponse;
 import api.models.CreateUserRequest;
 import api.models.LoginUserRequest;
+import iteration1.ui.BaseUiTest;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.Alert;
@@ -23,20 +24,8 @@ import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class DepositByUserTest {
-    @BeforeAll
-    public static void setupSelenoid(){
-        Configuration.remote = "http://localhost:4444/wd/hub";
-        Configuration.baseUrl = "http://10.8.0.19:3000";
-        Configuration.browser = "chrome";
-        Configuration.browserSize = "1920x1080";
+public class DepositByUserTest extends BaseUiTest {
 
-        Configuration.browserCapabilities.setCapability("selenoid:options",
-                Map.of("enableVNC", true, "enebleLog", true)
-        );
-    }
-    //Ann12345
-    //UZTvfcr831%%
     @Test
     public void userCanDepositAccountWithCorrectAmount(){
         // ШАГИ ПО НАСТРОЙКЕ ОКРУЖЕНИЯ

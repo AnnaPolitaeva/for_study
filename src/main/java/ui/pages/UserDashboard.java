@@ -11,6 +11,7 @@ public class UserDashboard extends BasePage<UserDashboard> {
 
     private SelenideElement welcomeText = $(Selectors.byClassName("welcome-text"));
     private SelenideElement createAccountButton = $(Selectors.byText("➕ Create New Account"));
+    private SelenideElement usernameButton = $(Selectors.byText("Noname"));
 
     @Override
     public String url() {
@@ -19,6 +20,11 @@ public class UserDashboard extends BasePage<UserDashboard> {
 
     public UserDashboard createNewAccount(){
         createAccountButton.click();
+        return this;
+    }
+
+    public UserDashboard goToChangeName(){
+        usernameButton.click();
         return this;
     }
 }
