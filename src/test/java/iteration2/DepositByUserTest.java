@@ -61,10 +61,11 @@ public class DepositByUserTest extends BaseTest {
     public void userCanNotDepositDifferentAccountTest() {
         CreateUserRequest createUserRequest = createUser();
         CreateAccountResponse createAccountResponse = createAccount(createUserRequest);
+        float amount = RandomData.getAmount();
 
         CreateUserRequest createDifferentUserRequest = createUser();
         CreateAccountResponse createAccountDifferentUserResponse = createAccount(createDifferentUserRequest);
-        depositAccountWithUnauthorized(createAccountDifferentUserResponse, 2000F, createUserRequest, "Unauthorized access to account");
+        depositAccountWithUnauthorized(createAccountDifferentUserResponse, amount, createUserRequest);
         checkAccount(createDifferentUserRequest, createAccountDifferentUserResponse);
 
     }
@@ -126,7 +127,7 @@ public class DepositByUserTest extends BaseTest {
         });
     }
 
-    private void depositAccountWithUnauthorized(CreateAccountResponse createAccountResponse, float amount, CreateUserRequest createUserRequest, String error){
+    private void depositAccountWithUnauthorized(CreateAccountResponse createAccountResponse, float amount, CreateUserRequest createUserRequest){
         step("Step: Deposit Account With Incorrect Amount", () -> {
             DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
                     .id(createAccountResponse.getId())
@@ -137,7 +138,7 @@ public class DepositByUserTest extends BaseTest {
                     RequestSpecs.authAsUser(
                             createUserRequest.getUsername(),
                             createUserRequest.getPassword()),
-                    ResponseSpecs.requestReturnsForbidden(error))
+                    ResponseSpecs.requestReturnsForbidden())
                     .post(depositAccountRequest);
         });
     }

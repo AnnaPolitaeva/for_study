@@ -86,7 +86,7 @@ public class TransferMoneyByUserTest extends BaseTest {
         CreateAccountResponse createAccountResponse = createAccount(createUserRequest);
         CreateAccountResponse createSecondAccountResponse = createAccount(createUserRequest);
 
-        transferMoneyWithError(createAccountResponse, createSecondAccountResponse, 6000F, createUserRequest, "Invalid transfer: insufficient funds or invalid accounts");
+        transferMoneyWithError(createAccountResponse, createSecondAccountResponse, RandomData.getAmount(), createUserRequest);
         checkAccount(createUserRequest, createSecondAccountResponse.getId(), createSecondAccountResponse.getBalance());
         checkAccount(createUserRequest, createAccountResponse.getId(), createSecondAccountResponse.getBalance());
     }
@@ -164,6 +164,23 @@ public class TransferMoneyByUserTest extends BaseTest {
                             createUserRequest.getUsername(),
                             createUserRequest.getPassword()),
                     ResponseSpecs.requestReturnsBadRequest(error))
+                    .put(transferMoneyRequest);
+        });
+    }
+
+    private void transferMoneyWithError(CreateAccountResponse createAccountResponse, CreateAccountResponse createSecondAccountResponse, float amount, CreateUserRequest createUserRequest){
+        step("Step: Transfer Money", () -> {
+            TransferMoneyRequest transferMoneyRequest = TransferMoneyRequest.builder()
+                    .senderAccountId(createAccountResponse.getId())
+                    .receiverAccountId(createSecondAccountResponse.getId())
+                    .amount(amount)
+                    .build();
+
+            new TransferMoneyRequester(
+                    RequestSpecs.authAsUser(
+                            createUserRequest.getUsername(),
+                            createUserRequest.getPassword()),
+                    ResponseSpecs.requestReturnsBadRequestInTransfer())
                     .put(transferMoneyRequest);
         });
     }

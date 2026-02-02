@@ -17,15 +17,16 @@ import static io.qameta.allure.Allure.step;
 public class ChangeNameByUserTest extends BaseTest {
 
     @Test
-    public void UserCanChangeNameWithCorrectNameTest() {
+    public void userCanChangeNameWithCorrectNameTest() {
+        String newName = RandomData.getName();
         CreateUserRequest createUserRequest = createUser();
-        changeNameCorrect(createUserRequest, "Bon Jovi");
-        checkName(createUserRequest, "Bon Jovi");
+        changeNameCorrect(createUserRequest, newName);
+        checkName(createUserRequest, newName);
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"Ann 123", "Sara  Parker", "Mike!Shein", "David"})
-    public void UserCanChangeNameWithIncorrectNameTest(String input) {
+    public void userCanChangeNameWithIncorrectNameTest(String input) {
         CreateUserRequest createUserRequest = createUser();
         changeNameIncorrect(createUserRequest, input);
         checkName(createUserRequest, null);

@@ -54,6 +54,13 @@ public class ResponseSpecs {
                 .build();
     }
 
+    public static ResponseSpecification requestReturnsBadRequestInTransfer() {
+        return defaultResponseBuilder()
+                .expectStatusCode(HttpStatus.SC_BAD_REQUEST)
+                .expectBody(equalTo("Invalid transfer: insufficient funds or invalid accounts"))
+                .build();
+    }
+
     public static ResponseSpecification requestReturnsBadRequestForChangeName() {
         return defaultResponseBuilder()
                 .expectStatusCode(HttpStatus.SC_BAD_REQUEST)
@@ -67,10 +74,10 @@ public class ResponseSpecs {
                 .build();
     }
 
-    public static ResponseSpecification requestReturnsForbidden(String errorValue) {
+    public static ResponseSpecification requestReturnsForbidden() {
         return defaultResponseBuilder()
                 .expectStatusCode(HttpStatus.SC_FORBIDDEN)
-                .expectBody(equalTo(errorValue))
+                .expectBody(equalTo("Unauthorized access to account"))
                 .build();
     }
 }
