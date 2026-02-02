@@ -1,82 +1,42 @@
 package iteration2.ui;
 
-import com.codeborne.selenide.*;
 import api.models.CreateAccountResponse;
 import api.models.CreateUserRequest;
-import api.models.LoginUserRequest;
-import iteration1.ui.BaseUiTest;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
-import org.openqa.selenium.Alert;
-import api.requests.skeleton.Endpoint;
-import api.requests.skeleton.requesters.CrudRequester;
 import api.requests.steps.AdminSteps;
 import api.requests.steps.UserSteps;
-import api.specs.RequestSpecs;
-import api.specs.ResponseSpecs;
-
-import java.util.Arrays;
-import java.util.Map;
+import com.codeborne.selenide.Selectors;
+import iteration1.ui.BaseUiTest;
+import org.junit.jupiter.api.Test;
+import ui.pages.BankAlert;
+import ui.pages.DepositAccount;
+import ui.pages.LoginPage;
+import ui.pages.UserDashboard;
 
 import static com.codeborne.selenide.Condition.text;
-import static com.codeborne.selenide.Selenide.*;
-import static io.restassured.RestAssured.given;
+import static com.codeborne.selenide.Selenide.$;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class DepositByUserTest extends BaseUiTest {
 
     @Test
-    public void userCanDepositAccountWithCorrectAmount(){
-        // ШАГИ ПО НАСТРОЙКЕ ОКРУЖЕНИЯ
-        // ШАГ 1: админ логинится в банке
-        // ШАГ 2: админ создает юзера
-        // ШАГ 3: юзер создает два аккаунта
-        // ШАГ 4: юзер логинится в банке
+    public void userCanDepositAccountWithCorrectAmount() {
         CreateUserRequest user = AdminSteps.createUser().request();
-
-        String userAuthHeader = new CrudRequester(
-                RequestSpecs.unauthSpec(),
-                Endpoint.LOGIN,
-                ResponseSpecs.requestReturnsOK())
-                .post(LoginUserRequest.builder().username(user.getUsername()).password(user.getPassword()).build())
-                .extract()
-                .header("Authorization");
+        authAsUser(user);
 
         CreateAccountResponse accountInfo = UserSteps.createAccount(user);
 
-        Selenide.open("/");
-        executeJavaScript("localStorage.setItem('authToken', arguments[0]);", userAuthHeader);
+        new LoginPage().open().login(user.getUsername(), user.getPassword()).getPage(UserDashboard.class).getDepositMoneyButton().click();
 
-        Selenide.open("/dashboard");
-
-        // ШАГИ ТЕСТА
-        // ШАГ 5: юзер производит пополнение аккаунта
-        $(Selectors.byText("💰 Deposit Money")).click();
-        $(".account-selector").selectOptionByValue(String.valueOf(accountInfo.getId()));
-        $(Selectors.byAttribute("placeholder", "Enter amount")).sendKeys("200");
-        $(Selectors.byText("💵 Deposit")).click();
+        new DepositAccount().open().depositMoney("200", accountInfo.getId()).checkAlertMessageAdnAccept(BankAlert.SUCCESSFULLY_DEPOSIT_200_TO_ACCOUNT.getMessage());
 
         // ШАГ 6: проверка, что аккаунт пополнен на UI
-        Alert alert = switchTo().alert();
-
-        assertThat(alert.getText()).contains("✅ Successfully deposited $200 to account " + accountInfo.getAccountNumber() + "!");
-
-        alert.accept();
-
+        //TODO:придумать другой способ проверки баланса аккаунта в ui
         $(Selectors.byText("💰 Deposit Money")).click();
-
         $("option[value='" + accountInfo.getId() + "']").shouldHave(text("Balance: $200.00"));
 
         // ШАГ 7: проверка, что аккаунт был пополнен на API
-
-        CreateAccountResponse[] existingUserAccounts = given()
-                .spec(RequestSpecs.authAsUser(user.getUsername(), user.getPassword()))
-                .get("http://localhost:4111/api/v1/customer/accounts")
-                .then().assertThat()
-                .extract().as(CreateAccountResponse[].class);
-
-        CreateAccountResponse createdAccount = Arrays.stream(existingUserAccounts).filter(account -> account.getAccountNumber().equals(accountInfo.getAccountNumber()))
+        CreateAccountResponse createdAccount = new UserSteps(user.getUsername(), user.getPassword()).getAllAccounts().stream().filter(account -> account.getAccountNumber().equals(accountInfo.getAccountNumber()))
                 .findFirst().orElse(null);
 
         assertThat(createdAccount).isNotNull();
@@ -84,55 +44,22 @@ public class DepositByUserTest extends BaseUiTest {
     }
 
     @Test
-    public void userCanDepositAccountWithIncorrectAmount(){
-        // ШАГИ ПО НАСТРОЙКЕ ОКРУЖЕНИЯ
-        // ШАГ 1: админ логинится в банке
-        // ШАГ 2: админ создает юзера
-        // ШАГ 3: юзер создает аккаунт
-        // ШАГ 4: юзер логинится в банке
+    public void userCanDepositAccountWithIncorrectAmount() {
         CreateUserRequest user = AdminSteps.createUser().request();
-
-        String userAuthHeader = new CrudRequester(
-                RequestSpecs.unauthSpec(),
-                Endpoint.LOGIN,
-                ResponseSpecs.requestReturnsOK())
-                .post(LoginUserRequest.builder().username(user.getUsername()).password(user.getPassword()).build())
-                .extract()
-                .header("Authorization");
+        authAsUser(user);
 
         CreateAccountResponse accountInfo = UserSteps.createAccount(user);
 
-        Selenide.open("/");
-        executeJavaScript("localStorage.setItem('authToken', arguments[0]);", userAuthHeader);
+        new LoginPage().open().login(user.getUsername(), user.getPassword()).getPage(UserDashboard.class).getDepositMoneyButton().click();
 
-        Selenide.open("/dashboard");
+        new DepositAccount().open().depositMoney("0", accountInfo.getId()).checkAlertMessageAdnAccept(BankAlert.PLEASE_ENTER_A_VALID_AMOUNT.getMessage());
 
-        // ШАГИ ТЕСТА
-        // ШАГ 5: юзер производит пополнение аккаунта
-        $(Selectors.byText("💰 Deposit Money")).click();
-        $(".account-selector").selectOptionByValue(String.valueOf(accountInfo.getId()));
-        $(Selectors.byAttribute("placeholder", "Enter amount")).sendKeys("0");
-        $(Selectors.byText("💵 Deposit")).click();
-
-        // ШАГ 6: проверка, что аккаунт НЕ пополнен на UI
-        Alert alert = switchTo().alert();
-
-        assertThat(alert.getText()).contains("❌ Please enter a valid amount.");
-
-        alert.accept();
-
-
+        // ШАГ 6: проверка, что аккаунт пополнен на UI
+        //TODO:придумать другой способ проверки баланса аккаунта в ui
         $("option[value='" + accountInfo.getId() + "']").shouldHave(text("Balance: $0.00"));
 
         // ШАГ 7: проверка, что аккаунт НЕ был пополнен на API
-
-        CreateAccountResponse[] existingUserAccounts = given()
-                .spec(RequestSpecs.authAsUser(user.getUsername(), user.getPassword()))
-                .get("http://localhost:4111/api/v1/customer/accounts")
-                .then().assertThat()
-                .extract().as(CreateAccountResponse[].class);
-
-        CreateAccountResponse createdAccount = Arrays.stream(existingUserAccounts).filter(account -> account.getAccountNumber().equals(accountInfo.getAccountNumber()))
+        CreateAccountResponse createdAccount = new UserSteps(user.getUsername(), user.getPassword()).getAllAccounts().stream().filter(account -> account.getAccountNumber().equals(accountInfo.getAccountNumber()))
                 .findFirst().orElse(null);
 
         assertThat(createdAccount).isNotNull();

@@ -1,97 +1,47 @@
 package iteration2.ui;
 
-import com.codeborne.selenide.Condition;
-import com.codeborne.selenide.Configuration;
-import com.codeborne.selenide.Selectors;
-import com.codeborne.selenide.Selenide;
 import api.models.CreateAccountResponse;
 import api.models.CreateUserRequest;
-import api.models.LoginUserRequest;
-import iteration1.ui.BaseUiTest;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
-import org.openqa.selenium.Alert;
-import api.requests.skeleton.Endpoint;
-import api.requests.skeleton.requesters.CrudRequester;
 import api.requests.steps.AdminSteps;
 import api.requests.steps.UserSteps;
-import api.specs.RequestSpecs;
-import api.specs.ResponseSpecs;
-
-import java.util.Arrays;
-import java.util.Map;
+import com.codeborne.selenide.Condition;
+import com.codeborne.selenide.Selenide;
+import iteration1.ui.BaseUiTest;
+import org.junit.jupiter.api.Test;
+import ui.pages.*;
 
 import static com.codeborne.selenide.Condition.text;
-import static com.codeborne.selenide.Selenide.*;
 import static com.codeborne.selenide.Selenide.$;
-import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class TransferMoneyByUserTest extends BaseUiTest {
 
     @Test
-    public void userCanTransferMoneyByHisAccountWithCorrectAmountTest(){
-        // ШАГИ ПО НАСТРОЙКЕ ОКРУЖЕНИЯ
-        // ШАГ 1: админ логинится в банке
-        // ШАГ 2: админ создает юзера
-        // ШАГ 3: юзер создает два аккаунта
-        // ШАГ 4: юзер производит пополнение аккаунта
-        // ШАГ 5: юзер логинится в банке
+    public void userCanTransferMoneyByHisAccountWithCorrectAmountTest() {
         CreateUserRequest user = AdminSteps.createUser().request();
-
-        String userAuthHeader = new CrudRequester(
-                RequestSpecs.unauthSpec(),
-                Endpoint.LOGIN,
-                ResponseSpecs.requestReturnsOK())
-                .post(LoginUserRequest.builder().username(user.getUsername()).password(user.getPassword()).build())
-                .extract()
-                .header("Authorization");
+        authAsUser(user);
 
         CreateAccountResponse accountInfo = UserSteps.createAccount(user);
         CreateAccountResponse secondAccountInfo = UserSteps.createAccount(user);
         UserSteps.depositAccount(accountInfo, user, 200F);
 
-        Selenide.open("/");
-        executeJavaScript("localStorage.setItem('authToken', arguments[0]);", userAuthHeader);
+        new LoginPage().open().login(user.getUsername(), user.getPassword()).getPage(UserDashboard.class).getMakeTransferButton().click();
 
-        Selenide.open("/dashboard");
-        $(Selectors.byClassName("welcome-text")).shouldBe(Condition.visible).shouldHave(Condition.text("Welcome, noname!"));
-
-        // ШАГИ ТЕСТА
-        // ШАГ 6: юзер переводит деньги на второй аккаунт
-        $(Selectors.byText("🔄 Make a Transfer")).click();
-        $(Selectors.byText("🆕 New Transfer")).shouldBe(Condition.visible);
-        $(".account-selector").selectOptionByValue(String.valueOf(accountInfo.getId()));
-        $(Selectors.byAttribute("placeholder", "Enter recipient account number")).sendKeys(secondAccountInfo.getAccountNumber());
-        $(Selectors.byAttribute("placeholder", "Enter amount")).sendKeys("10");
-        $(Selectors.byAttribute("type", "checkbox")).click();
-        $(Selectors.byText("🚀 Send Transfer")).click();
+        new TransferPage().open().getNewTransferText().shouldBe(Condition.visible);
+        new TransferPage().open().makeTransfer(accountInfo.getId(), secondAccountInfo.getAccountNumber(), "10", true).checkAlertMessageAdnAccept(BankAlert.SUCCESSFULLY_TRANSFERRED_10_TO_ACCOUNT.getMessage() + secondAccountInfo.getAccountNumber() + "!");
 
         // ШАГ 7: проверка, что аккаунт-получатель был пополнен, а баланс аккаунта-отправителя уменьшился в UI
-        Alert alert = switchTo().alert();
-
-        assertThat(alert.getText()).contains("✅ Successfully transferred $10 to account " + secondAccountInfo.getAccountNumber() + "!");
-
-        alert.accept();
-
         Selenide.refresh();
 
         $("option[value='" + secondAccountInfo.getId() + "']").shouldHave(text("Balance: $10.00"));
         $("option[value='" + accountInfo.getId() + "']").shouldHave(text("Balance: $190.00"));
 
         // ШАГ 8: проверка, что аккаунт-получатель был пополнен, а баланс аккаунта-отправителя уменьшился на API
-
-        CreateAccountResponse[] existingUserAccounts = given()
-                .spec(RequestSpecs.authAsUser(user.getUsername(), user.getPassword()))
-                .get("http://localhost:4111/api/v1/customer/accounts")
-                .then().assertThat()
-                .extract().as(CreateAccountResponse[].class);
-
-        CreateAccountResponse accountRecipient = Arrays.stream(existingUserAccounts).filter(account -> account.getAccountNumber().equals(secondAccountInfo.getAccountNumber()))
+        CreateAccountResponse accountRecipient = new UserSteps(user.getUsername(), user.getPassword()).getAllAccounts().stream().filter(account -> account.getAccountNumber().equals(secondAccountInfo.getAccountNumber()))
                 .findFirst().orElse(null);
 
-        CreateAccountResponse accountSender = Arrays.stream(existingUserAccounts).filter(account -> account.getAccountNumber().equals(accountInfo.getAccountNumber()))
+        CreateAccountResponse accountSender = new UserSteps(user.getUsername(), user.getPassword()).getAllAccounts().stream().filter(account -> account.getAccountNumber().equals(accountInfo.getAccountNumber()))
                 .findFirst().orElse(null);
 
         assertThat(accountRecipient).isNotNull();
@@ -102,89 +52,35 @@ public class TransferMoneyByUserTest extends BaseUiTest {
     }
 
     @Test
-    public void userCanTransferMoneyByAnotherUserAccountWithCorrectAmountTest(){
-        // ШАГИ ПО НАСТРОЙКЕ ОКРУЖЕНИЯ
-        // ШАГ 1: админ логинится в банке
-        // ШАГ 2: админ создает двух юзеров
-        // ШАГ 3: юзер 1 создает аккаунт
-        // ШАГ 4: юзер 2 создает аккаунт
-        // ШАГ 5: юзер 1 производит пополнение аккаунта
-        // ШАГ 6: юзер 1 логинится в банке
+    public void userCanTransferMoneyByAnotherUserAccountWithCorrectAmountTest() {
         CreateUserRequest user = AdminSteps.createUser().request();
-
-        String userAuthHeader = new CrudRequester(
-                RequestSpecs.unauthSpec(),
-                Endpoint.LOGIN,
-                ResponseSpecs.requestReturnsOK())
-                .post(LoginUserRequest.builder().username(user.getUsername()).password(user.getPassword()).build())
-                .extract()
-                .header("Authorization");
+        authAsUser(user);
 
         CreateUserRequest anotherUser = AdminSteps.createUser().request();
-
-        String anotherUserAuthHeader = new CrudRequester(
-                RequestSpecs.unauthSpec(),
-                Endpoint.LOGIN,
-                ResponseSpecs.requestReturnsOK())
-                .post(LoginUserRequest.builder().username(anotherUser.getUsername()).password(anotherUser.getPassword()).build())
-                .extract()
-                .header("Authorization");
+        authAsUser(anotherUser);
 
         CreateAccountResponse accountInfo = UserSteps.createAccount(user);
         CreateAccountResponse anotherUserAccountInfo = UserSteps.createAccount(anotherUser);
         UserSteps.depositAccount(accountInfo, user, 200F);
 
-        Selenide.open("/");
-        executeJavaScript("localStorage.setItem('authToken', arguments[0]);", userAuthHeader);
-
-        Selenide.open("/dashboard");
-        $(Selectors.byClassName("welcome-text")).shouldBe(Condition.visible).shouldHave(Condition.text("Welcome, noname!"));
-
-        // ШАГИ ТЕСТА
-        // ШАГ 7: юзер переводит деньги на второй аккаунт
-        $(Selectors.byText("🔄 Make a Transfer")).click();
-        $(Selectors.byText("🆕 New Transfer")).shouldBe(Condition.visible);
-        $(".account-selector").selectOptionByValue(String.valueOf(accountInfo.getId()));
-        $(Selectors.byAttribute("placeholder", "Enter recipient account number")).sendKeys(anotherUserAccountInfo.getAccountNumber());
-        $(Selectors.byAttribute("placeholder", "Enter amount")).sendKeys("10");
-        $(Selectors.byAttribute("type", "checkbox")).click();
-        $(Selectors.byText("🚀 Send Transfer")).click();
+        new LoginPage().open().login(user.getUsername(), user.getPassword()).getPage(UserDashboard.class).getMakeTransferButton().click();
+        new TransferPage().open().getNewTransferText().shouldBe(Condition.visible);
+        new TransferPage().open().makeTransfer(accountInfo.getId(), anotherUserAccountInfo.getAccountNumber(), "10", true).checkAlertMessageAdnAccept(BankAlert.SUCCESSFULLY_TRANSFERRED_10_TO_ACCOUNT.getMessage() + anotherUserAccountInfo.getAccountNumber() + "!");
 
         // ШАГ 8: проверка, что аккаунт-получатель был пополнен, а баланс аккаунта-отправителя уменьшился в UI
-        Alert alert = switchTo().alert();
-        assertThat(alert.getText()).contains("✅ Successfully transferred $10 to account " + anotherUserAccountInfo.getAccountNumber() + "!");
-        alert.accept();
-
         Selenide.refresh();
 
         $("option[value='" + accountInfo.getId() + "']").shouldHave(text("Balance: $190.00"));
 
-        Selenide.open("/");
-        executeJavaScript("localStorage.setItem('authToken', arguments[0]);", anotherUserAuthHeader);
-        Selenide.open("/dashboard");
-        $(Selectors.byClassName("welcome-text")).shouldBe(Condition.visible).shouldHave(Condition.text("Welcome, noname!"));
+        new LoginPage().open().login(anotherUser.getUsername(), anotherUser.getPassword()).getPage(DepositAccount.class);
 
-        $(Selectors.byText("💰 Deposit Money")).click();
         $("option[value='" + anotherUserAccountInfo.getId() + "']").shouldHave(text("Balance: $10.00"));
 
         // ШАГ 9: проверка, что аккаунт-получатель был пополнен, а баланс аккаунта-отправителя уменьшился на API
-
-        CreateAccountResponse[] existingUserAccounts = given()
-                .spec(RequestSpecs.authAsUser(user.getUsername(), user.getPassword()))
-                .get("http://localhost:4111/api/v1/customer/accounts")
-                .then().assertThat()
-                .extract().as(CreateAccountResponse[].class);
-
-        CreateAccountResponse[] existingAnotherUserAccounts = given()
-                .spec(RequestSpecs.authAsUser(anotherUser.getUsername(), anotherUser.getPassword()))
-                .get("http://localhost:4111/api/v1/customer/accounts")
-                .then().assertThat()
-                .extract().as(CreateAccountResponse[].class);
-
-        CreateAccountResponse accountRecipient = Arrays.stream(existingAnotherUserAccounts).filter(account -> account.getAccountNumber().equals(anotherUserAccountInfo.getAccountNumber()))
+        CreateAccountResponse accountRecipient = new UserSteps(user.getUsername(), user.getPassword()).getAllAccounts().stream().filter(account -> account.getAccountNumber().equals(anotherUserAccountInfo.getAccountNumber()))
                 .findFirst().orElse(null);
 
-        CreateAccountResponse accountSender = Arrays.stream(existingUserAccounts).filter(account -> account.getAccountNumber().equals(accountInfo.getAccountNumber()))
+        CreateAccountResponse accountSender = new UserSteps(anotherUser.getUsername(), anotherUser.getPassword()).getAllAccounts().stream().filter(account -> account.getAccountNumber().equals(accountInfo.getAccountNumber()))
                 .findFirst().orElse(null);
 
         assertThat(accountRecipient).isNotNull();
@@ -195,66 +91,29 @@ public class TransferMoneyByUserTest extends BaseUiTest {
     }
 
     @Test
-    public void userCanNotTransferMoneyByHisAccountWithIncorrectAmountTest(){
-        // ШАГИ ПО НАСТРОЙКЕ ОКРУЖЕНИЯ
-        // ШАГ 1: админ логинится в банке
-        // ШАГ 2: админ создает юзера
-        // ШАГ 3: юзер создает два аккаунта
-        // ШАГ 4: юзер логинится в банке
+    public void userCanNotTransferMoneyByHisAccountWithIncorrectAmountTest() {
         CreateUserRequest user = AdminSteps.createUser().request();
-
-        String userAuthHeader = new CrudRequester(
-                RequestSpecs.unauthSpec(),
-                Endpoint.LOGIN,
-                ResponseSpecs.requestReturnsOK())
-                .post(LoginUserRequest.builder().username(user.getUsername()).password(user.getPassword()).build())
-                .extract()
-                .header("Authorization");
+        authAsUser(user);
 
         CreateAccountResponse accountInfo = UserSteps.createAccount(user);
         CreateAccountResponse secondAccountInfo = UserSteps.createAccount(user);
         UserSteps.depositAccount(accountInfo, user, 5F);
 
-        Selenide.open("/");
-        executeJavaScript("localStorage.setItem('authToken', arguments[0]);", userAuthHeader);
+        new LoginPage().open().login(user.getUsername(), user.getPassword()).getPage(UserDashboard.class).getMakeTransferButton().click();
+        new TransferPage().open().getNewTransferText().shouldBe(Condition.visible);
+        new TransferPage().open().makeTransfer(accountInfo.getId(), secondAccountInfo.getAccountNumber(), "10", true).checkAlertMessageAdnAccept(BankAlert.INVALID_TRANSFER.getMessage());
 
-        Selenide.open("/dashboard");
-        $(Selectors.byClassName("welcome-text")).shouldBe(Condition.visible).shouldHave(Condition.text("Welcome, noname!"));
-
-        // ШАГИ ТЕСТА
-        // ШАГ 6: юзер переводит деньги на второй аккаунт
-        $(Selectors.byText("🔄 Make a Transfer")).click();
-        $(Selectors.byText("🆕 New Transfer")).shouldBe(Condition.visible);
-        $(".account-selector").selectOptionByValue(String.valueOf(accountInfo.getId()));
-        $(Selectors.byAttribute("placeholder", "Enter recipient account number")).sendKeys(secondAccountInfo.getAccountNumber());
-        $(Selectors.byAttribute("placeholder", "Enter amount")).sendKeys("10");
-        $(Selectors.byAttribute("type", "checkbox")).click();
-        $(Selectors.byText("🚀 Send Transfer")).click();
-
-        // ШАГ 7: проверка, что аккаунт-получатель был пополнен, а баланс аккаунта-отправителя уменьшился в UI
-        Alert alert = switchTo().alert();
-
-        assertThat(alert.getText()).contains("❌ Error: Invalid transfer: insufficient funds or invalid accounts");
-
-        alert.accept();
-
+        //Проверка в ui
         Selenide.refresh();
 
         $("option[value='" + secondAccountInfo.getId() + "']").shouldHave(text("Balance: $0.00"));
         $("option[value='" + accountInfo.getId() + "']").shouldHave(text("Balance: $5.00"));
 
         // ШАГ 8: проверка, что аккаунт-получатель был пополнен, а баланс аккаунта-отправителя уменьшился на API
-
-        CreateAccountResponse[] existingUserAccounts = given()
-                .spec(RequestSpecs.authAsUser(user.getUsername(), user.getPassword()))
-                .get("http://localhost:4111/api/v1/customer/accounts")
-                .then().assertThat()
-                .extract().as(CreateAccountResponse[].class);
-
-        CreateAccountResponse accountRecipient = Arrays.stream(existingUserAccounts).filter(account -> account.getAccountNumber().equals(secondAccountInfo.getAccountNumber()))
+        CreateAccountResponse accountRecipient = new UserSteps(user.getUsername(), user.getPassword()).getAllAccounts().stream().filter(account -> account.getAccountNumber().equals(secondAccountInfo.getAccountNumber()))
                 .findFirst().orElse(null);
 
-        CreateAccountResponse accountSender = Arrays.stream(existingUserAccounts).filter(account -> account.getAccountNumber().equals(accountInfo.getAccountNumber()))
+        CreateAccountResponse accountSender = new UserSteps(user.getUsername(), user.getPassword()).getAllAccounts().stream().filter(account -> account.getAccountNumber().equals(accountInfo.getAccountNumber()))
                 .findFirst().orElse(null);
 
         assertThat(accountRecipient).isNotNull();
@@ -265,48 +124,17 @@ public class TransferMoneyByUserTest extends BaseUiTest {
     }
 
     @Test
-    public void userCanNotTransferMoneyByHisAccountWithVeryMuchAmountTest(){
-        // ШАГИ ПО НАСТРОЙКЕ ОКРУЖЕНИЯ
-        // ШАГ 1: админ логинится в банке
-        // ШАГ 2: админ создает юзера
-        // ШАГ 3: юзер создает два аккаунта
-        // ШАГ 4: юзер логинится в банке
+    public void userCanNotTransferMoneyByHisAccountWithVeryMuchAmountTest() {
         CreateUserRequest user = AdminSteps.createUser().request();
-
-        String userAuthHeader = new CrudRequester(
-                RequestSpecs.unauthSpec(),
-                Endpoint.LOGIN,
-                ResponseSpecs.requestReturnsOK())
-                .post(LoginUserRequest.builder().username(user.getUsername()).password(user.getPassword()).build())
-                .extract()
-                .header("Authorization");
+        authAsUser(user);
 
         CreateAccountResponse accountInfo = UserSteps.createAccount(user);
         CreateAccountResponse secondAccountInfo = UserSteps.createAccount(user);
         UserSteps.depositAccount(accountInfo, user, 15000F);
 
-        Selenide.open("/");
-        executeJavaScript("localStorage.setItem('authToken', arguments[0]);", userAuthHeader);
-
-        Selenide.open("/dashboard");
-        $(Selectors.byClassName("welcome-text")).shouldBe(Condition.visible).shouldHave(Condition.text("Welcome, noname!"));
-
-        // ШАГИ ТЕСТА
-        // ШАГ 6: юзер переводит деньги на второй аккаунт
-        $(Selectors.byText("🔄 Make a Transfer")).click();
-        $(Selectors.byText("🆕 New Transfer")).shouldBe(Condition.visible);
-        $(".account-selector").selectOptionByValue(String.valueOf(accountInfo.getId()));
-        $(Selectors.byAttribute("placeholder", "Enter recipient account number")).sendKeys(secondAccountInfo.getAccountNumber());
-        $(Selectors.byAttribute("placeholder", "Enter amount")).sendKeys("10500");
-        $(Selectors.byAttribute("type", "checkbox")).click();
-        $(Selectors.byText("🚀 Send Transfer")).click();
-
-        // ШАГ 7: проверка, что аккаунт-получатель был пополнен, а баланс аккаунта-отправителя уменьшился в UI
-        Alert alert = switchTo().alert();
-
-        assertThat(alert.getText()).contains("❌ Error: Transfer amount cannot exceed 10000");
-
-        alert.accept();
+        new LoginPage().open().login(user.getUsername(), user.getPassword()).getPage(UserDashboard.class).getMakeTransferButton().click();
+        new TransferPage().open().getNewTransferText().shouldBe(Condition.visible);
+        new TransferPage().open().makeTransfer(accountInfo.getId(), secondAccountInfo.getAccountNumber(), "10500", true).checkAlertMessageAdnAccept(BankAlert.TRANSFER_AMOUNT_CANNOT_EXCEED_10000.getMessage());
 
         Selenide.refresh();
 
@@ -314,17 +142,10 @@ public class TransferMoneyByUserTest extends BaseUiTest {
         $("option[value='" + accountInfo.getId() + "']").shouldHave(text("Balance: $15000"));
 
         // ШАГ 8: проверка, что аккаунт-получатель был пополнен, а баланс аккаунта-отправителя уменьшился на API
-
-        CreateAccountResponse[] existingUserAccounts = given()
-                .spec(RequestSpecs.authAsUser(user.getUsername(), user.getPassword()))
-                .get("http://localhost:4111/api/v1/customer/accounts")
-                .then().assertThat()
-                .extract().as(CreateAccountResponse[].class);
-
-        CreateAccountResponse accountRecipient = Arrays.stream(existingUserAccounts).filter(account -> account.getAccountNumber().equals(secondAccountInfo.getAccountNumber()))
+        CreateAccountResponse accountRecipient = new UserSteps(user.getUsername(), user.getPassword()).getAllAccounts().stream().filter(account -> account.getAccountNumber().equals(secondAccountInfo.getAccountNumber()))
                 .findFirst().orElse(null);
 
-        CreateAccountResponse accountSender = Arrays.stream(existingUserAccounts).filter(account -> account.getAccountNumber().equals(accountInfo.getAccountNumber()))
+        CreateAccountResponse accountSender = new UserSteps(user.getUsername(), user.getPassword()).getAllAccounts().stream().filter(account -> account.getAccountNumber().equals(accountInfo.getAccountNumber()))
                 .findFirst().orElse(null);
 
         assertThat(accountRecipient).isNotNull();
@@ -335,66 +156,28 @@ public class TransferMoneyByUserTest extends BaseUiTest {
     }
 
     @Test
-    public void userCanNotTransferMoneyByHisAccountWithoutConfirmTest(){
-        // ШАГИ ПО НАСТРОЙКЕ ОКРУЖЕНИЯ
-        // ШАГ 1: админ логинится в банке
-        // ШАГ 2: админ создает юзера
-        // ШАГ 3: юзер создает два аккаунта
-        // ШАГ 4: юзер логинится в банке
+    public void userCanNotTransferMoneyByHisAccountWithoutConfirmTest() {
         CreateUserRequest user = AdminSteps.createUser().request();
-
-        String userAuthHeader = new CrudRequester(
-                RequestSpecs.unauthSpec(),
-                Endpoint.LOGIN,
-                ResponseSpecs.requestReturnsOK())
-                .post(LoginUserRequest.builder().username(user.getUsername()).password(user.getPassword()).build())
-                .extract()
-                .header("Authorization");
+        authAsUser(user);
 
         CreateAccountResponse accountInfo = UserSteps.createAccount(user);
         CreateAccountResponse secondAccountInfo = UserSteps.createAccount(user);
-        UserSteps.depositAccount(accountInfo, user, 200F);
+        UserSteps.depositAccount(accountInfo, user, 15000F);
 
-        Selenide.open("/");
-        executeJavaScript("localStorage.setItem('authToken', arguments[0]);", userAuthHeader);
-
-        Selenide.open("/dashboard");
-        $(Selectors.byClassName("welcome-text")).shouldBe(Condition.visible).shouldHave(Condition.text("Welcome, noname!"));
-
-        // ШАГИ ТЕСТА
-        // ШАГ 6: юзер переводит деньги на второй аккаунт
-        $(Selectors.byText("🔄 Make a Transfer")).click();
-        $(Selectors.byText("🆕 New Transfer")).shouldBe(Condition.visible);
-        $(".account-selector").selectOptionByValue(String.valueOf(accountInfo.getId()));
-        $(Selectors.byAttribute("placeholder", "Enter recipient account number")).sendKeys(secondAccountInfo.getAccountNumber());
-        $(Selectors.byAttribute("placeholder", "Enter amount")).sendKeys("10");
-
-        $(Selectors.byText("🚀 Send Transfer")).click();
+        new LoginPage().open().login(user.getUsername(), user.getPassword()).getPage(UserDashboard.class).getMakeTransferButton().click();
+        new TransferPage().open().getNewTransferText().shouldBe(Condition.visible);
+        new TransferPage().open().makeTransfer(accountInfo.getId(), secondAccountInfo.getAccountNumber(), "10", false).checkAlertMessageAdnAccept(BankAlert.PLEASE_FILL_ALL_FIELDS_AND_CONFIRM.getMessage());
 
         // ШАГ 7: проверка, что аккаунт-получатель был пополнен, а баланс аккаунта-отправителя уменьшился в UI
-        Alert alert = switchTo().alert();
-
-        assertThat(alert.getText()).contains("❌ Please fill all fields and confirm.");
-
-        alert.accept();
-
         Selenide.refresh();
-
         $("option[value='" + secondAccountInfo.getId() + "']").shouldHave(text("Balance: $0.00"));
         $("option[value='" + accountInfo.getId() + "']").shouldHave(text("Balance: $200.00"));
 
         // ШАГ 8: проверка, что аккаунт-получатель был пополнен, а баланс аккаунта-отправителя уменьшился на API
-
-        CreateAccountResponse[] existingUserAccounts = given()
-                .spec(RequestSpecs.authAsUser(user.getUsername(), user.getPassword()))
-                .get("http://localhost:4111/api/v1/customer/accounts")
-                .then().assertThat()
-                .extract().as(CreateAccountResponse[].class);
-
-        CreateAccountResponse accountRecipient = Arrays.stream(existingUserAccounts).filter(account -> account.getAccountNumber().equals(secondAccountInfo.getAccountNumber()))
+        CreateAccountResponse accountRecipient = new UserSteps(user.getUsername(), user.getPassword()).getAllAccounts().stream().filter(account -> account.getAccountNumber().equals(secondAccountInfo.getAccountNumber()))
                 .findFirst().orElse(null);
 
-        CreateAccountResponse accountSender = Arrays.stream(existingUserAccounts).filter(account -> account.getAccountNumber().equals(accountInfo.getAccountNumber()))
+        CreateAccountResponse accountSender = new UserSteps(user.getUsername(), user.getPassword()).getAllAccounts().stream().filter(account -> account.getAccountNumber().equals(accountInfo.getAccountNumber()))
                 .findFirst().orElse(null);
 
         assertThat(accountRecipient).isNotNull();
