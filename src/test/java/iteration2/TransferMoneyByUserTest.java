@@ -1,6 +1,7 @@
 package iteration2;
 
 import generators.RandomData;
+import io.qameta.allure.Step;
 import iteration1.BaseTest;
 import models.*;
 import org.junit.jupiter.api.Test;
@@ -91,35 +92,8 @@ public class TransferMoneyByUserTest extends BaseTest {
         checkAccount(createUserRequest, createAccountResponse.getId(), createSecondAccountResponse.getBalance());
     }
 
-    private CreateUserRequest createUser(){
-        return step("Step: Create user", () -> {
-            CreateUserRequest createUserRequest = CreateUserRequest.builder()
-                    .username(RandomData.getUsername())
-                    .password(RandomData.getPassword())
-                    .role(UserRole.USER.toString())
-                    .build();
-
-            new AdminCreateUserRequester(
-                    RequestSpecs.adminSpec(),
-                    ResponseSpecs.entityWasCreated())
-                    .post(createUserRequest);
-            return createUserRequest;
-        });
-    }
-
-    private CreateAccountResponse createAccount(CreateUserRequest createUserRequest) {
-        return step("Step: Create account", () -> {
-            return new CreateAccountRequester(
-                    RequestSpecs.authAsUser(
-                            createUserRequest.getUsername(),
-                            createUserRequest.getPassword()),
-                    ResponseSpecs.entityWasCreated())
-                    .post().extract().as(CreateAccountResponse.class);
-        });
-    }
-
+    @Step("Deposit Account")
     private DepositAccountResponse depositAccount(CreateAccountResponse createAccountResponse, float amount, CreateUserRequest createUserRequest){
-        return step("Step: Deposit Account With Correct Amount", () -> {
             DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
                     .id(createAccountResponse.getId())
                     .balance(amount)
@@ -131,11 +105,11 @@ public class TransferMoneyByUserTest extends BaseTest {
                             createUserRequest.getPassword()),
                     ResponseSpecs.requestReturnsOK())
                     .post(depositAccountRequest).extract().as(DepositAccountResponse.class);
-        });
     }
 
-    private TransferMoneyResponse transferMoneySuccessfully(CreateAccountResponse createAccountResponse, CreateAccountResponse createSecondAccountResponse, float amount, CreateUserRequest createUserRequest){
-        return step("Step: Transfer Money", () -> {
+    @Step("Transfer Money")
+    private TransferMoneyResponse transferMoneySuccessfully(CreateAccountResponse createAccountResponse, CreateAccountResponse createSecondAccountResponse,
+                                                            float amount, CreateUserRequest createUserRequest){
             TransferMoneyRequest transferMoneyRequest = TransferMoneyRequest.builder()
                     .senderAccountId(createAccountResponse.getId())
                     .receiverAccountId(createSecondAccountResponse.getId())
@@ -148,11 +122,11 @@ public class TransferMoneyByUserTest extends BaseTest {
                             createUserRequest.getPassword()),
                     ResponseSpecs.requestReturnsOK())
                     .put(transferMoneyRequest).extract().as(TransferMoneyResponse.class);
-        });
     }
 
-    private void transferMoneyWithError(CreateAccountResponse createAccountResponse, CreateAccountResponse createSecondAccountResponse, float amount, CreateUserRequest createUserRequest, String error){
-        step("Step: Transfer Money", () -> {
+    @Step("Transfer Money")
+    private void transferMoneyWithError(CreateAccountResponse createAccountResponse, CreateAccountResponse createSecondAccountResponse,
+                                        float amount, CreateUserRequest createUserRequest, String error){
             TransferMoneyRequest transferMoneyRequest = TransferMoneyRequest.builder()
                     .senderAccountId(createAccountResponse.getId())
                     .receiverAccountId(createSecondAccountResponse.getId())
@@ -165,11 +139,10 @@ public class TransferMoneyByUserTest extends BaseTest {
                             createUserRequest.getPassword()),
                     ResponseSpecs.requestReturnsBadRequest(error))
                     .put(transferMoneyRequest);
-        });
     }
 
+    @Step("Transfer Money")
     private void transferMoneyWithError(CreateAccountResponse createAccountResponse, CreateAccountResponse createSecondAccountResponse, float amount, CreateUserRequest createUserRequest){
-        step("Step: Transfer Money", () -> {
             TransferMoneyRequest transferMoneyRequest = TransferMoneyRequest.builder()
                     .senderAccountId(createAccountResponse.getId())
                     .receiverAccountId(createSecondAccountResponse.getId())
@@ -182,9 +155,9 @@ public class TransferMoneyByUserTest extends BaseTest {
                             createUserRequest.getPassword()),
                     ResponseSpecs.requestReturnsBadRequestInTransfer())
                     .put(transferMoneyRequest);
-        });
     }
 
+    @Step ("Check Account Balance")
     private void checkAccount(CreateUserRequest createUserRequest,long accountId, float expectedBalance) {
         step("Step: Check account balance", () -> {
             new GetInfoRequester(

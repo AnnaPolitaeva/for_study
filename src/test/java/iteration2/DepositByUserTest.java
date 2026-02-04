@@ -2,6 +2,7 @@ package iteration2;
 
 import generators.RandomData;
 import io.qameta.allure.Description;
+import io.qameta.allure.Step;
 import iteration1.BaseTest;
 import models.*;
 import org.junit.jupiter.api.Test;
@@ -70,33 +71,9 @@ public class DepositByUserTest extends BaseTest {
 
     }
 
-    private CreateUserRequest createUser(){
-        return step("Step: Create user", () -> {
-            CreateUserRequest createUserRequest = CreateUserRequest.builder()
-                    .username(RandomData.getUsername())
-                    .password(RandomData.getPassword())
-                    .role(UserRole.USER.toString())
-                    .build();
 
-            new AdminCreateUserRequester(
-                    RequestSpecs.adminSpec(),
-                    ResponseSpecs.entityWasCreated())
-                    .post(createUserRequest);
-            return createUserRequest;
-        });
-    }
-
-    private CreateAccountResponse createAccount(CreateUserRequest createUserRequest) {
-        return step("Step: Create account", () -> new CreateAccountRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                ResponseSpecs.entityWasCreated())
-                .post().extract().as(CreateAccountResponse.class));
-    }
-
+    @Step ("Deposit Account")
     private DepositAccountResponse depositAccountCorrectAmount(CreateAccountResponse createAccountResponse, float amount, CreateUserRequest createUserRequest){
-        return step("Step: Deposit Account With Correct Amount", () -> {
             DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
                     .id(createAccountResponse.getId())
                     .balance(amount)
@@ -108,11 +85,10 @@ public class DepositByUserTest extends BaseTest {
                             createUserRequest.getPassword()),
                     ResponseSpecs.requestReturnsOK())
                     .post(depositAccountRequest).extract().as(DepositAccountResponse.class);
-        });
     }
 
+    @Step ("Deposit Account")
     private void depositAccountIncorrectAmount(CreateAccountResponse createAccountResponse, float amount, CreateUserRequest createUserRequest, String error){
-        step("Step: Deposit Account With Incorrect Amount", () -> {
             DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
                     .id(createAccountResponse.getId())
                     .balance(amount)
@@ -124,11 +100,10 @@ public class DepositByUserTest extends BaseTest {
                             createUserRequest.getPassword()),
                     ResponseSpecs.requestReturnsBadRequest(error))
                     .post(depositAccountRequest);
-        });
     }
 
+    @Step ("Deposit Account")
     private void depositAccountWithUnauthorized(CreateAccountResponse createAccountResponse, float amount, CreateUserRequest createUserRequest){
-        step("Step: Deposit Account With Incorrect Amount", () -> {
             DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
                     .id(createAccountResponse.getId())
                     .balance(amount)
@@ -140,17 +115,15 @@ public class DepositByUserTest extends BaseTest {
                             createUserRequest.getPassword()),
                     ResponseSpecs.requestReturnsForbidden())
                     .post(depositAccountRequest);
-        });
     }
 
+    @Step ("Check Account Balance")
     private void checkAccount(CreateUserRequest createUserRequest, CreateAccountResponse createAccountResponse) {
-        step("Step: Check account balance", () -> {
             new GetInfoRequester(
                     RequestSpecs.authAsUser(
                             createUserRequest.getUsername(),
                             createUserRequest.getPassword()),
                     ResponseSpecs.requestReturnsOK(createAccountResponse.getId(), createAccountResponse.getBalance()))
                     .get();
-        });
     }
 }

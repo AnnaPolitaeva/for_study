@@ -1,6 +1,7 @@
 package iteration2;
 
 import generators.RandomData;
+import io.qameta.allure.Step;
 import iteration1.BaseTest;
 import models.*;
 import org.junit.jupiter.api.Test;
@@ -32,24 +33,8 @@ public class ChangeNameByUserTest extends BaseTest {
         checkName(createUserRequest, null);
     }
 
-    private CreateUserRequest createUser(){
-        return step("Step: Create user", () -> {
-            CreateUserRequest createUserRequest = CreateUserRequest.builder()
-                    .username(RandomData.getUsername())
-                    .password(RandomData.getPassword())
-                    .role(UserRole.USER.toString())
-                    .build();
-
-            new AdminCreateUserRequester(
-                    RequestSpecs.adminSpec(),
-                    ResponseSpecs.entityWasCreated())
-                    .post(createUserRequest);
-            return createUserRequest;
-        });
-    }
-
+    @Step("Change Name With Correct value")
     private void changeNameCorrect(CreateUserRequest createUserRequest, String name){
-        step("Step: Change Name With Correct value", () -> {
             ChangeNameRequest changeNameRequest = ChangeNameRequest.builder()
                     .name(name)
                     .build();
@@ -60,11 +45,10 @@ public class ChangeNameByUserTest extends BaseTest {
                             createUserRequest.getPassword()),
                     ResponseSpecs.requestReturnsOKAndMessageSuccess())
                     .post(changeNameRequest);
-        });
     }
 
+    @Step("Change Name With Incorrect value")
     private void changeNameIncorrect(CreateUserRequest createUserRequest, String name){
-        step("Step: Change Name With Incorrect value", () -> {
             ChangeNameRequest changeNameRequest = ChangeNameRequest.builder()
                     .name(name)
                     .build();
@@ -75,11 +59,10 @@ public class ChangeNameByUserTest extends BaseTest {
                             createUserRequest.getPassword()),
                     ResponseSpecs.requestReturnsBadRequestForChangeName())
                     .post(changeNameRequest);
-        });
     }
 
+    @Step("Check Name")
     private void checkName(CreateUserRequest createUserRequest, String expectedName){
-        step("Step: Change Name With Incorrect value", () -> {
             GetInfoResponse getInfoResponse = new GetInfoRequester(
                     RequestSpecs.authAsUser(
                             createUserRequest.getUsername(),
@@ -88,6 +71,5 @@ public class ChangeNameByUserTest extends BaseTest {
                     .get().extract().as(GetInfoResponse.class);
 
             softly.assertThat(getInfoResponse.getName()).isEqualTo(expectedName);
-        });
     }
 }
