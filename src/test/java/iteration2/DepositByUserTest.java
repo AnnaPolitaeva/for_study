@@ -4,14 +4,15 @@ import generators.RandomData;
 import io.qameta.allure.Description;
 import io.qameta.allure.Step;
 import iteration1.BaseTest;
-import models.*;
+import models.CreateAccountResponse;
+import models.CreateUserRequest;
+import models.DepositAccountRequest;
+import models.DepositAccountResponse;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import requests.AdminCreateUserRequester;
-import requests.CreateAccountRequester;
 import requests.DepositAccountRequester;
 import requests.GetInfoRequester;
 import specs.RequestSpecs;
@@ -72,58 +73,58 @@ public class DepositByUserTest extends BaseTest {
     }
 
 
-    @Step ("Deposit Account")
-    private DepositAccountResponse depositAccountCorrectAmount(CreateAccountResponse createAccountResponse, float amount, CreateUserRequest createUserRequest){
-            DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
-                    .id(createAccountResponse.getId())
-                    .balance(amount)
-                    .build();
+    @Step("Deposit Account")
+    private DepositAccountResponse depositAccountCorrectAmount(CreateAccountResponse createAccountResponse, float amount, CreateUserRequest createUserRequest) {
+        DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
+                .id(createAccountResponse.getId())
+                .balance(amount)
+                .build();
 
-            return new DepositAccountRequester(
-                    RequestSpecs.authAsUser(
-                            createUserRequest.getUsername(),
-                            createUserRequest.getPassword()),
-                    ResponseSpecs.requestReturnsOK())
-                    .post(depositAccountRequest).extract().as(DepositAccountResponse.class);
+        return new DepositAccountRequester(
+                RequestSpecs.authAsUser(
+                        createUserRequest.getUsername(),
+                        createUserRequest.getPassword()),
+                ResponseSpecs.requestReturnsOK())
+                .post(depositAccountRequest).extract().as(DepositAccountResponse.class);
     }
 
-    @Step ("Deposit Account")
-    private void depositAccountIncorrectAmount(CreateAccountResponse createAccountResponse, float amount, CreateUserRequest createUserRequest, String error){
-            DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
-                    .id(createAccountResponse.getId())
-                    .balance(amount)
-                    .build();
+    @Step("Deposit Account")
+    private void depositAccountIncorrectAmount(CreateAccountResponse createAccountResponse, float amount, CreateUserRequest createUserRequest, String error) {
+        DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
+                .id(createAccountResponse.getId())
+                .balance(amount)
+                .build();
 
-            new DepositAccountRequester(
-                    RequestSpecs.authAsUser(
-                            createUserRequest.getUsername(),
-                            createUserRequest.getPassword()),
-                    ResponseSpecs.requestReturnsBadRequest(error))
-                    .post(depositAccountRequest);
+        new DepositAccountRequester(
+                RequestSpecs.authAsUser(
+                        createUserRequest.getUsername(),
+                        createUserRequest.getPassword()),
+                ResponseSpecs.requestReturnsBadRequest(error))
+                .post(depositAccountRequest);
     }
 
-    @Step ("Deposit Account")
-    private void depositAccountWithUnauthorized(CreateAccountResponse createAccountResponse, float amount, CreateUserRequest createUserRequest){
-            DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
-                    .id(createAccountResponse.getId())
-                    .balance(amount)
-                    .build();
+    @Step("Deposit Account")
+    private void depositAccountWithUnauthorized(CreateAccountResponse createAccountResponse, float amount, CreateUserRequest createUserRequest) {
+        DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
+                .id(createAccountResponse.getId())
+                .balance(amount)
+                .build();
 
-            new DepositAccountRequester(
-                    RequestSpecs.authAsUser(
-                            createUserRequest.getUsername(),
-                            createUserRequest.getPassword()),
-                    ResponseSpecs.requestReturnsForbidden())
-                    .post(depositAccountRequest);
+        new DepositAccountRequester(
+                RequestSpecs.authAsUser(
+                        createUserRequest.getUsername(),
+                        createUserRequest.getPassword()),
+                ResponseSpecs.requestReturnsForbidden())
+                .post(depositAccountRequest);
     }
 
-    @Step ("Check Account Balance")
+    @Step("Check Account Balance")
     private void checkAccount(CreateUserRequest createUserRequest, CreateAccountResponse createAccountResponse) {
-            new GetInfoRequester(
-                    RequestSpecs.authAsUser(
-                            createUserRequest.getUsername(),
-                            createUserRequest.getPassword()),
-                    ResponseSpecs.requestReturnsOK(createAccountResponse.getId(), createAccountResponse.getBalance()))
-                    .get();
+        new GetInfoRequester(
+                RequestSpecs.authAsUser(
+                        createUserRequest.getUsername(),
+                        createUserRequest.getPassword()),
+                ResponseSpecs.requestReturnsOK(createAccountResponse.getId(), createAccountResponse.getBalance()))
+                .get();
     }
 }
