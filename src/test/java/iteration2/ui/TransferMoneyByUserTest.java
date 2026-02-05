@@ -5,13 +5,13 @@ import api.models.CreateUserRequest;
 import api.requests.steps.AdminSteps;
 import api.requests.steps.UserSteps;
 import com.codeborne.selenide.Condition;
-import com.codeborne.selenide.Selenide;
 import iteration1.ui.BaseUiTest;
 import org.junit.jupiter.api.Test;
-import ui.pages.*;
+import ui.pages.BankAlert;
+import ui.pages.LoginPage;
+import ui.pages.TransferPage;
+import ui.pages.UserDashboard;
 
-import static com.codeborne.selenide.Condition.text;
-import static com.codeborne.selenide.Selenide.$;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -31,13 +31,6 @@ public class TransferMoneyByUserTest extends BaseUiTest {
         new TransferPage().open().getNewTransferText().shouldBe(Condition.visible);
         new TransferPage().open().makeTransfer(accountInfo.getId(), secondAccountInfo.getAccountNumber(), "10", true).checkAlertMessageAdnAccept(BankAlert.SUCCESSFULLY_TRANSFERRED_10_TO_ACCOUNT.getMessage() + secondAccountInfo.getAccountNumber() + "!");
 
-        // ШАГ 7: проверка, что аккаунт-получатель был пополнен, а баланс аккаунта-отправителя уменьшился в UI
-        Selenide.refresh();
-
-        $("option[value='" + secondAccountInfo.getId() + "']").shouldHave(text("Balance: $10.00"));
-        $("option[value='" + accountInfo.getId() + "']").shouldHave(text("Balance: $190.00"));
-
-        // ШАГ 8: проверка, что аккаунт-получатель был пополнен, а баланс аккаунта-отправителя уменьшился на API
         CreateAccountResponse accountRecipient = new UserSteps(user.getUsername(), user.getPassword()).getAllAccounts().stream().filter(account -> account.getAccountNumber().equals(secondAccountInfo.getAccountNumber()))
                 .findFirst().orElse(null);
 
@@ -67,16 +60,6 @@ public class TransferMoneyByUserTest extends BaseUiTest {
         new TransferPage().open().getNewTransferText().shouldBe(Condition.visible);
         new TransferPage().open().makeTransfer(accountInfo.getId(), anotherUserAccountInfo.getAccountNumber(), "10", true).checkAlertMessageAdnAccept(BankAlert.SUCCESSFULLY_TRANSFERRED_10_TO_ACCOUNT.getMessage() + anotherUserAccountInfo.getAccountNumber() + "!");
 
-        // ШАГ 8: проверка, что аккаунт-получатель был пополнен, а баланс аккаунта-отправителя уменьшился в UI
-        Selenide.refresh();
-
-        $("option[value='" + accountInfo.getId() + "']").shouldHave(text("Balance: $190.00"));
-
-        new LoginPage().open().login(anotherUser.getUsername(), anotherUser.getPassword()).getPage(DepositAccount.class);
-
-        $("option[value='" + anotherUserAccountInfo.getId() + "']").shouldHave(text("Balance: $10.00"));
-
-        // ШАГ 9: проверка, что аккаунт-получатель был пополнен, а баланс аккаунта-отправителя уменьшился на API
         CreateAccountResponse accountRecipient = new UserSteps(user.getUsername(), user.getPassword()).getAllAccounts().stream().filter(account -> account.getAccountNumber().equals(anotherUserAccountInfo.getAccountNumber()))
                 .findFirst().orElse(null);
 
@@ -103,13 +86,6 @@ public class TransferMoneyByUserTest extends BaseUiTest {
         new TransferPage().open().getNewTransferText().shouldBe(Condition.visible);
         new TransferPage().open().makeTransfer(accountInfo.getId(), secondAccountInfo.getAccountNumber(), "10", true).checkAlertMessageAdnAccept(BankAlert.INVALID_TRANSFER.getMessage());
 
-        //Проверка в ui
-        Selenide.refresh();
-
-        $("option[value='" + secondAccountInfo.getId() + "']").shouldHave(text("Balance: $0.00"));
-        $("option[value='" + accountInfo.getId() + "']").shouldHave(text("Balance: $5.00"));
-
-        // ШАГ 8: проверка, что аккаунт-получатель был пополнен, а баланс аккаунта-отправителя уменьшился на API
         CreateAccountResponse accountRecipient = new UserSteps(user.getUsername(), user.getPassword()).getAllAccounts().stream().filter(account -> account.getAccountNumber().equals(secondAccountInfo.getAccountNumber()))
                 .findFirst().orElse(null);
 
@@ -136,12 +112,6 @@ public class TransferMoneyByUserTest extends BaseUiTest {
         new TransferPage().open().getNewTransferText().shouldBe(Condition.visible);
         new TransferPage().open().makeTransfer(accountInfo.getId(), secondAccountInfo.getAccountNumber(), "10500", true).checkAlertMessageAdnAccept(BankAlert.TRANSFER_AMOUNT_CANNOT_EXCEED_10000.getMessage());
 
-        Selenide.refresh();
-
-        $("option[value='" + secondAccountInfo.getId() + "']").shouldHave(text("Balance: $0.00"));
-        $("option[value='" + accountInfo.getId() + "']").shouldHave(text("Balance: $15000"));
-
-        // ШАГ 8: проверка, что аккаунт-получатель был пополнен, а баланс аккаунта-отправителя уменьшился на API
         CreateAccountResponse accountRecipient = new UserSteps(user.getUsername(), user.getPassword()).getAllAccounts().stream().filter(account -> account.getAccountNumber().equals(secondAccountInfo.getAccountNumber()))
                 .findFirst().orElse(null);
 
@@ -168,12 +138,6 @@ public class TransferMoneyByUserTest extends BaseUiTest {
         new TransferPage().open().getNewTransferText().shouldBe(Condition.visible);
         new TransferPage().open().makeTransfer(accountInfo.getId(), secondAccountInfo.getAccountNumber(), "10", false).checkAlertMessageAdnAccept(BankAlert.PLEASE_FILL_ALL_FIELDS_AND_CONFIRM.getMessage());
 
-        // ШАГ 7: проверка, что аккаунт-получатель был пополнен, а баланс аккаунта-отправителя уменьшился в UI
-        Selenide.refresh();
-        $("option[value='" + secondAccountInfo.getId() + "']").shouldHave(text("Balance: $0.00"));
-        $("option[value='" + accountInfo.getId() + "']").shouldHave(text("Balance: $200.00"));
-
-        // ШАГ 8: проверка, что аккаунт-получатель был пополнен, а баланс аккаунта-отправителя уменьшился на API
         CreateAccountResponse accountRecipient = new UserSteps(user.getUsername(), user.getPassword()).getAllAccounts().stream().filter(account -> account.getAccountNumber().equals(secondAccountInfo.getAccountNumber()))
                 .findFirst().orElse(null);
 

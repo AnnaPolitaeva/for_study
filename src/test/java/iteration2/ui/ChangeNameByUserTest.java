@@ -31,7 +31,6 @@ public class ChangeNameByUserTest extends BaseUiTest {
 
         new EditProfile().checkUsername(user.getUsername(), "Bon Jovi");
 
-        // ШАГ 6: проверка, что имя было изменено на API
         GetInfoResponse userInfo = new UserSteps(user.getUsername(), user.getPassword()).getUserInfo();
 
         assertThat(userInfo.getName()).isNotNull();
