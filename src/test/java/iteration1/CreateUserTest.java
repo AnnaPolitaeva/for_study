@@ -2,13 +2,9 @@
 package iteration1;
 
 import generators.RandomData;
-import io.restassured.RestAssured;
-import io.restassured.filter.log.RequestLoggingFilter;
-import io.restassured.filter.log.ResponseLoggingFilter;
 import models.CreateUserRequest;
 import models.CreateUserResponse;
 import models.UserRole;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -17,10 +13,7 @@ import requests.AdminCreateUserRequester;
 import specs.RequestSpecs;
 import specs.ResponseSpecs;
 
-import java.util.List;
 import java.util.stream.Stream;
-
-import static io.restassured.RestAssured.given;
 
 public class CreateUserTest extends BaseTest{
 

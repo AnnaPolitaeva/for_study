@@ -1,5 +1,6 @@
 package specs;
 
+import api.configs.Config;
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.filter.log.RequestLoggingFilter;
 import io.restassured.filter.log.ResponseLoggingFilter;
@@ -19,7 +20,7 @@ public class RequestSpecs {
                 .setAccept(ContentType.JSON)
                 .addFilters( List.of(new RequestLoggingFilter(),
                         new ResponseLoggingFilter()))
-                .setBaseUri("http://localhost:4111");
+                .setBaseUri(Config.getProperty("server"));
     }
 
     public static RequestSpecification unauthSpec() {

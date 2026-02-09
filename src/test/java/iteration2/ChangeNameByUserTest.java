@@ -1,7 +1,7 @@
 package iteration2;
 
 import generators.RandomData;
-import io.qameta.allure.Step;
+import io.qameta.allure.Allure;
 import iteration1.BaseTest;
 import models.ChangeNameRequest;
 import models.CreateUserRequest;
@@ -15,60 +15,72 @@ import specs.RequestSpecs;
 import specs.ResponseSpecs;
 
 public class ChangeNameByUserTest extends BaseTest {
+    private String newName;
+    private CreateUserRequest createUserRequest;
+    private GetInfoResponse getInfoResponse;
 
     @Test
     public void userCanChangeNameWithCorrectNameTest() {
-        String newName = RandomData.getName();
-        CreateUserRequest createUserRequest = createUser();
-        changeNameCorrect(createUserRequest, newName);
-        checkName(createUserRequest, newName);
+
+        Allure.step("Подготовка тестовых данных", () -> {
+            newName = RandomData.getName();
+            createUserRequest = createUser();
+        });
+
+        Allure.step("Изменение имени пользователя", () -> {
+            ChangeNameRequest changeNameRequest = ChangeNameRequest.builder()
+                    .name(newName)
+                    .build();
+
+            new ChangeNameRequester(
+                    RequestSpecs.authAsUser(
+                            createUserRequest.getUsername(),
+                            createUserRequest.getPassword()),
+                    ResponseSpecs.requestReturnsOKAndMessageSuccess())
+                    .post(changeNameRequest);
+        });
+
+        Allure.step("Проверка изменений имени пользователя", () -> {
+            getInfoResponse = new GetInfoRequester(
+                    RequestSpecs.authAsUser(
+                            createUserRequest.getUsername(),
+                            createUserRequest.getPassword()),
+                    ResponseSpecs.requestReturnsOK())
+                    .get().extract().as(GetInfoResponse.class);
+
+            softly.assertThat(getInfoResponse.getName()).isEqualTo(newName);
+        });
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"Ann 123", "Sara  Parker", "Mike!Shein", "David"})
     public void userCanChangeNameWithIncorrectNameTest(String input) {
-        CreateUserRequest createUserRequest = createUser();
-        changeNameIncorrect(createUserRequest, input);
-        checkName(createUserRequest, null);
-    }
+        Allure.step("Подготовка тестовых данных", () -> {
+            createUserRequest = createUser();
+        });
 
-    @Step("Change Name With Correct value")
-    private void changeNameCorrect(CreateUserRequest createUserRequest, String name) {
-        ChangeNameRequest changeNameRequest = ChangeNameRequest.builder()
-                .name(name)
-                .build();
+        Allure.step("Изменение имени пользователя некорректными данными", () -> {
+            ChangeNameRequest changeNameRequest = ChangeNameRequest.builder()
+                    .name(input)
+                    .build();
 
-        new ChangeNameRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                ResponseSpecs.requestReturnsOKAndMessageSuccess())
-                .post(changeNameRequest);
-    }
+            new ChangeNameRequester(
+                    RequestSpecs.authAsUser(
+                            createUserRequest.getUsername(),
+                            createUserRequest.getPassword()),
+                    ResponseSpecs.requestReturnsBadRequestForChangeName())
+                    .post(changeNameRequest);
+        });
 
-    @Step("Change Name With Incorrect value")
-    private void changeNameIncorrect(CreateUserRequest createUserRequest, String name) {
-        ChangeNameRequest changeNameRequest = ChangeNameRequest.builder()
-                .name(name)
-                .build();
+        Allure.step("Проверка, что имя пользователя не изменилось", () -> {
+            GetInfoResponse getInfoResponse = new GetInfoRequester(
+                    RequestSpecs.authAsUser(
+                            createUserRequest.getUsername(),
+                            createUserRequest.getPassword()),
+                    ResponseSpecs.requestReturnsOK())
+                    .get().extract().as(GetInfoResponse.class);
 
-        new ChangeNameRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                ResponseSpecs.requestReturnsBadRequestForChangeName())
-                .post(changeNameRequest);
-    }
-
-    @Step("Check Name")
-    private void checkName(CreateUserRequest createUserRequest, String expectedName) {
-        GetInfoResponse getInfoResponse = new GetInfoRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                ResponseSpecs.requestReturnsOK())
-                .get().extract().as(GetInfoResponse.class);
-
-        softly.assertThat(getInfoResponse.getName()).isEqualTo(expectedName);
+            softly.assertThat(getInfoResponse.getName()).isEqualTo(null);
+        });
     }
 }
