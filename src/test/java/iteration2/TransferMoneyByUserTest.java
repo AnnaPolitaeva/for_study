@@ -1,5 +1,6 @@
 package iteration2;
 
+import generators.RandomData;
 import iteration1.BaseTest;
 import models.*;
 import org.junit.jupiter.api.Test;
@@ -55,7 +56,7 @@ public class TransferMoneyByUserTest extends BaseTest {
         UserSteps.checkBalance(createUserRequest, createSecondAccountResponse.getId(), createSecondAccountResponse.getBalance() + amount);
 
         // проверка того, что баланс на отправляющем аккаунте уменьшился
-        UserSteps.checkBalance(createUserRequest, createAccountResponse.getId(), Math.round((depositAccountResponse.getBalance() - amount) * 100) / 100.00f);
+        UserSteps.checkBalance(createUserRequest, createAccountResponse.getId(), depositAccountResponse.getBalance() - amount);
     }
 
     @Test
@@ -75,11 +76,13 @@ public class TransferMoneyByUserTest extends BaseTest {
         // осуществляем пополнение аккаунта
         DepositAccountResponse depositAccountResponse = UserSteps.depositAccount(createAccountResponse, createUserRequest, 1F);
 
+        float amount = 0.01F;
+
         // переводим сумму
         TransferMoneyRequest transferMoneyRequest = TransferMoneyRequest.builder()
                 .senderAccountId(createAccountResponse.getId())
                 .receiverAccountId(createAccountDifferentUserResponse.getId())
-                .amount(0.01F)
+                .amount(amount)
                 .build();
 
         new CrudRequester(
@@ -91,10 +94,10 @@ public class TransferMoneyByUserTest extends BaseTest {
                 .post(transferMoneyRequest);
 
         // проверка того, что аккаунт пополнился
-        UserSteps.checkBalance(createDifferentUserRequest, createAccountDifferentUserResponse.getId(), createAccountDifferentUserResponse.getBalance() + 0.01F);
+        UserSteps.checkBalance(createDifferentUserRequest, createAccountDifferentUserResponse.getId(), createAccountDifferentUserResponse.getBalance() + amount);
 
         // проверка того, что баланс на отправляющем аккаунте уменьшился
-        UserSteps.checkBalance(createUserRequest, createAccountResponse.getId(), depositAccountResponse.getBalance() - 0.01F);
+        UserSteps.checkBalance(createUserRequest, createAccountResponse.getId(), depositAccountResponse.getBalance() - amount);
     }
 
     public static Stream<Arguments> invalidData() {
@@ -159,7 +162,7 @@ public class TransferMoneyByUserTest extends BaseTest {
         TransferMoneyRequest transferMoneyRequest = TransferMoneyRequest.builder()
                 .senderAccountId(createAccountResponse.getId())
                 .receiverAccountId(createSecondAccountResponse.getId())
-                .amount(6000F)
+                .amount(RandomData.getAmount())
                 .build();
 
         new CrudRequester(

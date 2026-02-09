@@ -41,7 +41,7 @@ public class ChangeNameByUserTest extends BaseTest {
                         createUserRequest.getPassword()),
                 Endpoint.CUSTOMER_PROFILE_GET,
                 ResponseSpecs.requestReturnsOK())
-                .get(null);
+                .get();
 
         ModelAssertions.assertThatModels(createUserRequest, getInfoResponse).match();
     }
@@ -73,7 +73,7 @@ public class ChangeNameByUserTest extends BaseTest {
                         createUserRequest.getPassword()),
                 Endpoint.CUSTOMER_PROFILE_GET,
                 ResponseSpecs.requestReturnsOK())
-                .get(null);
+                .get();
 
         ModelAssertions.assertThatModels(createUserResponse, getInfoResponse).match();
     }

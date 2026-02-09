@@ -85,7 +85,7 @@ public class DepositByUserTest extends BaseTest {
                         createUserRequest.getPassword()),
                 Endpoint.CUSTOMER_PROFILE_GET,
                 ResponseSpecs.requestReturnsOK(createAccountResponse.getId(), createAccountResponse.getBalance()))
-                .get(null);
+                .get();
     }
 
     @Test
@@ -123,6 +123,6 @@ public class DepositByUserTest extends BaseTest {
                         createDifferentUserRequest.getPassword()),
                 Endpoint.CUSTOMER_PROFILE_GET,
                 ResponseSpecs.requestReturnsOK(createAccountDifferentUserResponse.getId(), createAccountDifferentUserResponse.getBalance()))
-                .get(null);
+                .get();
     }
 }
