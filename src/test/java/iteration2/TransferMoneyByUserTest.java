@@ -23,19 +23,14 @@ public class TransferMoneyByUserTest extends BaseTest {
     @ParameterizedTest
     @ValueSource(floats = {9999.99F, 10000F})
     public void userCanTransferCorrectAmountOnOwnAccountTest(float amount) {
-        //создание пользователя
         CreateUserRequest createUserRequest = AdminSteps.createUser().request();
 
-        //создание аккаунта
         CreateAccountResponse createAccountResponse = UserSteps.createAccount(createUserRequest);
 
-        //создание второго аккаунта
         CreateAccountResponse createSecondAccountResponse = UserSteps.createAccount(createUserRequest);
 
-        // осуществляем пополнение аккаунта
         DepositAccountResponse depositAccountResponse = UserSteps.depositAccount(createAccountResponse, createUserRequest, 10000F);
 
-        // переводим сумму
         TransferMoneyRequest transferMoneyRequest = TransferMoneyRequest.builder()
                 .senderAccountId(createAccountResponse.getId())
                 .receiverAccountId(createSecondAccountResponse.getId())
@@ -52,28 +47,21 @@ public class TransferMoneyByUserTest extends BaseTest {
 
         softly.assertThat(transferMoneyResponse.getMessage()).isEqualTo(ApiAtributesOfResponse.TRANSFER_SUCCESS);
 
-        // проверка того, что аккаунт пополнился
         UserSteps.checkBalance(createUserRequest, createSecondAccountResponse.getId(), createSecondAccountResponse.getBalance() + amount);
 
-        // проверка того, что баланс на отправляющем аккаунте уменьшился
         UserSteps.checkBalance(createUserRequest, createAccountResponse.getId(), depositAccountResponse.getBalance() - amount);
     }
 
     @Test
     public void userCanTransferCorrectAmountOnAccountAnotherUserTest() {
-        //создание пользователя
         CreateUserRequest createUserRequest = AdminSteps.createUser().request();
 
-        //создание аккаунта
         CreateAccountResponse createAccountResponse = UserSteps.createAccount(createUserRequest);
 
-        //создание второго пользователя
         CreateUserRequest createDifferentUserRequest = AdminSteps.createUser().request();
 
-        //создание аккаунта у второго пользователя
         CreateAccountResponse createAccountDifferentUserResponse = UserSteps.createAccount(createDifferentUserRequest);
 
-        // осуществляем пополнение аккаунта
         DepositAccountResponse depositAccountResponse = UserSteps.depositAccount(createAccountResponse, createUserRequest, 1F);
 
         float amount = 0.01F;
@@ -111,20 +99,14 @@ public class TransferMoneyByUserTest extends BaseTest {
     @ParameterizedTest
     @MethodSource("invalidData")
     public void userCanNotTransferInvalidAmountTest(float depositAmount, float amount, String error) {
-        //создание пользователя
         CreateUserRequest createUserRequest = AdminSteps.createUser().request();
 
-        //создание аккаунта
         CreateAccountResponse createAccountResponse = UserSteps.createAccount(createUserRequest);
 
-        //создание второго аккаунта
         CreateAccountResponse createSecondAccountResponse = UserSteps.createAccount(createUserRequest);
 
-        // осуществляем пополнение аккаунта
         DepositAccountResponse depositAccountResponse = UserSteps.depositAccount(createAccountResponse, createUserRequest, depositAmount);
 
-
-        // переводим сумму
         TransferMoneyRequest transferMoneyRequest = TransferMoneyRequest.builder()
                 .senderAccountId(createAccountResponse.getId())
                 .receiverAccountId(createSecondAccountResponse.getId())

@@ -22,13 +22,10 @@ public class DepositByUserTest extends BaseTest {
     @ParameterizedTest
     @ValueSource(floats = {4999.99F, 5000F, 0.01F})
     public void userCanDepositAccountWithCorrectAmountTest(float amount) {
-        //создание пользователя
         CreateUserRequest createUserRequest = AdminSteps.createUser().request();
 
-        //создание аккаунта
         CreateAccountResponse createAccountResponse = UserSteps.createAccount(createUserRequest);
 
-        // осуществляем пополнение аккаунта
         DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
                 .id(createAccountResponse.getId())
                 .balance(amount)
@@ -57,14 +54,10 @@ public class DepositByUserTest extends BaseTest {
     @ParameterizedTest
     @MethodSource("invalidData")
     public void userCanDepositAccountWithInvalidAmountTest(float amount, String error) {
-
-        //создание пользователя
         CreateUserRequest createUserRequest = AdminSteps.createUser().request();
 
-        //создание аккаунта
         CreateAccountResponse createAccountResponse = UserSteps.createAccount(createUserRequest);
 
-        // осуществляем пополнение аккаунта
         DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
                 .id(createAccountResponse.getId())
                 .balance(amount)
@@ -78,7 +71,6 @@ public class DepositByUserTest extends BaseTest {
                 ResponseSpecs.requestReturnsBadRequest(error))
                 .post(depositAccountRequest);
 
-        // проверка того, что аккаунт не пополнился
         new CrudRequester(
                 RequestSpecs.authAsUser(
                         createUserRequest.getUsername(),
@@ -90,22 +82,18 @@ public class DepositByUserTest extends BaseTest {
 
     @Test
     public void userCanNotDepositDifferentAccountTest() {
-        //создание пользователя
+        private float amount = RandomData.getAmount();
         CreateUserRequest createUserRequest = AdminSteps.createUser().request();
 
-        //создание аккаунта
         UserSteps.createAccount(createUserRequest);
 
-        //создание второго пользователя
         CreateUserRequest createDifferentUserRequest = AdminSteps.createUser().request();
 
-        //создание аккаунта второго пользователя
         CreateAccountResponse createAccountDifferentUserResponse = UserSteps.createAccount(createDifferentUserRequest);
 
-        // осуществляем пополнение аккаунта
         DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
                 .id(createAccountDifferentUserResponse.getId())
-                .balance(2000F)
+                .balance(amount)
                 .build();
 
         new CrudRequester(
@@ -116,7 +104,6 @@ public class DepositByUserTest extends BaseTest {
                 ResponseSpecs.requestReturnsForbidden(ApiAtributesOfResponse.ERROR_UNAUTHORISED))
                 .post(depositAccountRequest);
 
-        // проверка того, что аккаунт не пополнился
         new CrudRequester(
                 RequestSpecs.authAsUser(
                         createDifferentUserRequest.getUsername(),

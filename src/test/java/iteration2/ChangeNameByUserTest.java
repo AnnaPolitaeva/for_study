@@ -16,12 +16,10 @@ import specs.ResponseSpecs;
 public class ChangeNameByUserTest extends BaseTest {
 
     @Test
-    public void UserCanChangeNameWithCorrectNameTest() {
+    public void userCanChangeNameWithCorrectNameTest() {
 
-        //создание пользователя
         CreateUserRequest createUserRequest = AdminSteps.createUser().request();
 
-        //изменение имени
         ChangeNameRequest changeNameRequest = ChangeNameRequest.builder()
                 .name("Bon Jovi")
                 .build();
@@ -48,12 +46,10 @@ public class ChangeNameByUserTest extends BaseTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"Ann 123", "Sara  Parker", "Mike!Shein", "David"})
-    public void UserCanChangeNameWithIncorrectNameTest(String input) {
-        //создание пользователя
+    public void userCanChangeNameWithIncorrectNameTest(String input) {
         CreateUserRequest createUserRequest = AdminSteps.createUser().request();
         CreateUserResponse createUserResponse = AdminSteps.createUser().response();
 
-        //изменение имени
         ChangeNameRequest changeNameRequest = ChangeNameRequest.builder()
                 .name(input)
                 .build();
@@ -66,7 +62,6 @@ public class ChangeNameByUserTest extends BaseTest {
                 ResponseSpecs.requestReturnsBadRequest(ApiAtributesOfResponse.ERROR_UPDATE_USERNAME))
                 .update(changeNameRequest);
 
-        // проверка того, что имя не установилось
         GetInfoResponse getInfoResponse = new ValidatedCrudRequester<GetInfoResponse>(
                 RequestSpecs.authAsUser(
                         createUserRequest.getUsername(),

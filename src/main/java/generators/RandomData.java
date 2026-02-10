@@ -16,6 +16,10 @@ public class RandomData {
                 RandomStringUtils.randomNumeric(3) + "$" ;
     }
 
+    public static String getName() {
+        return RandomStringUtils.randomAlphabetic(5) + " " + RandomStringUtils.randomAlphabetic(5);
+    }
+
     public static float getAmount() {
         return RandomUtils.nextFloat(0.01F, 5000.00F);
     }
