@@ -11,7 +11,6 @@ public enum Endpoint {
     ADMIN_USER("/admin/users", CreateUserRequest.class, CreateUserResponse.class),
     ACCOUNT("/accounts", BaseModel.class, CreateAccountResponse.class),
     CUSTOMER_PROFILE("/customer/profile", ChangeNameRequest.class, GetInfoResponse.class),
-    CUSTOMER_PROFILE_GET("/customer/profile", BaseModel.class, GetInfoResponse.class),
     ACCOUNT_DEPOSIT("/accounts/deposit", DepositAccountRequest.class, DepositAccountResponse.class),
     ACCOUNT_TRANSFER("/accounts/transfer", TransferMoneyRequest.class, TransferMoneyResponse.class);
 

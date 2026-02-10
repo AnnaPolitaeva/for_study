@@ -3,6 +3,7 @@ package iteration2;
 import generators.RandomData;
 import iteration1.BaseTest;
 import models.*;
+import models.comparison.ModelAssertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -41,6 +42,16 @@ public class DepositByUserTest extends BaseTest {
                 .post(depositAccountRequest);
 
         softly.assertThat(createAccountResponse.getBalance() + amount).isEqualTo(depositAccountResponse.getBalance());
+
+        GetInfoResponse getInfoResponse = new ValidatedCrudRequester<GetInfoResponse>(
+                RequestSpecs.authAsUser(
+                        createUserRequest.getUsername(),
+                        createUserRequest.getPassword()),
+                Endpoint.CUSTOMER_PROFILE,
+                ResponseSpecs.requestReturnsOK())
+                .get();
+
+        ModelAssertions.assertThatModels(depositAccountRequest, getInfoResponse);
     }
 
     public static Stream<Arguments> invalidData() {
@@ -72,13 +83,15 @@ public class DepositByUserTest extends BaseTest {
                 ResponseSpecs.requestReturnsBadRequest(error))
                 .post(depositAccountRequest);
 
-        new CrudRequester(
+        GetInfoResponse getInfoResponse = new ValidatedCrudRequester<GetInfoResponse>(
                 RequestSpecs.authAsUser(
                         createUserRequest.getUsername(),
                         createUserRequest.getPassword()),
-                Endpoint.CUSTOMER_PROFILE_GET,
+                Endpoint.CUSTOMER_PROFILE,
                 ResponseSpecs.requestReturnsOK(createAccountResponse.getId(), createAccountResponse.getBalance()))
                 .get();
+
+        ModelAssertions.assertThatModels(createAccountResponse, getInfoResponse);
     }
 
     @Test
@@ -108,7 +121,7 @@ public class DepositByUserTest extends BaseTest {
                 RequestSpecs.authAsUser(
                         createDifferentUserRequest.getUsername(),
                         createDifferentUserRequest.getPassword()),
-                Endpoint.CUSTOMER_PROFILE_GET,
+                Endpoint.CUSTOMER_PROFILE,
                 ResponseSpecs.requestReturnsOK(createAccountDifferentUserResponse.getId(), createAccountDifferentUserResponse.getBalance()))
                 .get();
     }

@@ -66,7 +66,7 @@ public class UserSteps {
                 RequestSpecs.authAsUser(
                         createUserRequest.getUsername(),
                         createUserRequest.getPassword()),
-                Endpoint.CUSTOMER_PROFILE_GET,
+                Endpoint.CUSTOMER_PROFILE,
                 ResponseSpecs.requestReturnsOK(accountId, Math.round((expectedBalance) * 100) / 100.00f))
                 .get();
     }

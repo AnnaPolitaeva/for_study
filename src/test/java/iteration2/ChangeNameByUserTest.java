@@ -32,12 +32,11 @@ public class ChangeNameByUserTest extends BaseTest {
                 ResponseSpecs.requestReturnsOKAndMessageSuccess(ApiAtributesOfResponse.MESSAGE_KEY, ApiAtributesOfResponse.PROFILE_UPDATE_SUCCESS))
                 .update(changeNameRequest);
 
-        // проверка того, что имя установилось
         GetInfoResponse getInfoResponse = new ValidatedCrudRequester<GetInfoResponse>(
                 RequestSpecs.authAsUser(
                         createUserRequest.getUsername(),
                         createUserRequest.getPassword()),
-                Endpoint.CUSTOMER_PROFILE_GET,
+                Endpoint.CUSTOMER_PROFILE,
                 ResponseSpecs.requestReturnsOK())
                 .get();
 
@@ -66,7 +65,7 @@ public class ChangeNameByUserTest extends BaseTest {
                 RequestSpecs.authAsUser(
                         createUserRequest.getUsername(),
                         createUserRequest.getPassword()),
-                Endpoint.CUSTOMER_PROFILE_GET,
+                Endpoint.CUSTOMER_PROFILE,
                 ResponseSpecs.requestReturnsOK())
                 .get();
 
