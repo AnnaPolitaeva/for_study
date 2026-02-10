@@ -5,6 +5,6 @@ public final class ApiAtributesOfResponse {
     public static final String ERROR_UNAUTHORISED = "Unauthorized access to account";
     public static final String MESSAGE_KEY = "message";
     public static final String TRANSFER_SUCCESS = "Transfer successful";
+    public static final String PROFILE_UPDATE_SUCCESS = "Profile updated successfully";
     public static final String ERROR_TRANSFER = "Invalid transfer: insufficient funds or invalid accounts";
-
 }
