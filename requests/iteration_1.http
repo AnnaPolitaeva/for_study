@@ -4,8 +4,8 @@ POST http://localhost:4111/api/v1/auth/login
 Content-Type: application/json
 
 {
-  "username": "admin",
-  "password": "admin"
+  "username": "Ann1234",
+  "password": "Ann12345!"
 }
 
 ### Positive test: Admin can create new user with correct data
@@ -14,8 +14,8 @@ Content-Type: application/json
 Authorization: Basic YWRtaW46YWRtaW4=
 
 {
-  "username": "kate19981",
-  "password": "kate19981",
+  "username": "Ann1234",
+  "password": "Ann12345!",
   "role": "USER"
 }
 

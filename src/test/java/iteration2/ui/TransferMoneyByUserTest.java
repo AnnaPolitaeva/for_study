@@ -20,7 +20,7 @@ public class TransferMoneyByUserTest extends BaseUiTest {
     @Test
     public void userCanTransferMoneyByHisAccountWithCorrectAmountTest() {
         CreateUserRequest user = AdminSteps.createUser().request();
-        authAsUser(user);
+//        authAsUser(user);
 
         CreateAccountResponse accountInfo = UserSteps.createAccount(user);
         CreateAccountResponse secondAccountInfo = UserSteps.createAccount(user);
@@ -47,10 +47,10 @@ public class TransferMoneyByUserTest extends BaseUiTest {
     @Test
     public void userCanTransferMoneyByAnotherUserAccountWithCorrectAmountTest() {
         CreateUserRequest user = AdminSteps.createUser().request();
-        authAsUser(user);
+//        authAsUser(user);
 
         CreateUserRequest anotherUser = AdminSteps.createUser().request();
-        authAsUser(anotherUser);
+//        authAsUser(anotherUser);
 
         CreateAccountResponse accountInfo = UserSteps.createAccount(user);
         CreateAccountResponse anotherUserAccountInfo = UserSteps.createAccount(anotherUser);
@@ -76,7 +76,7 @@ public class TransferMoneyByUserTest extends BaseUiTest {
     @Test
     public void userCanNotTransferMoneyByHisAccountWithIncorrectAmountTest() {
         CreateUserRequest user = AdminSteps.createUser().request();
-        authAsUser(user);
+//        authAsUser(user);
 
         CreateAccountResponse accountInfo = UserSteps.createAccount(user);
         CreateAccountResponse secondAccountInfo = UserSteps.createAccount(user);
@@ -102,7 +102,7 @@ public class TransferMoneyByUserTest extends BaseUiTest {
     @Test
     public void userCanNotTransferMoneyByHisAccountWithVeryMuchAmountTest() {
         CreateUserRequest user = AdminSteps.createUser().request();
-        authAsUser(user);
+//        authAsUser(user);
 
         CreateAccountResponse accountInfo = UserSteps.createAccount(user);
         CreateAccountResponse secondAccountInfo = UserSteps.createAccount(user);
@@ -128,7 +128,7 @@ public class TransferMoneyByUserTest extends BaseUiTest {
     @Test
     public void userCanNotTransferMoneyByHisAccountWithoutConfirmTest() {
         CreateUserRequest user = AdminSteps.createUser().request();
-        authAsUser(user);
+//        authAsUser(user);
 
         CreateAccountResponse accountInfo = UserSteps.createAccount(user);
         CreateAccountResponse secondAccountInfo = UserSteps.createAccount(user);

@@ -19,7 +19,7 @@ public class DepositByUserTest extends BaseUiTest {
     @Test
     public void userCanDepositAccountWithCorrectAmount() {
         CreateUserRequest user = AdminSteps.createUser().request();
-        authAsUser(user);
+//        authAsUser(user);
 
         CreateAccountResponse accountInfo = UserSteps.createAccount(user);
 
@@ -37,7 +37,7 @@ public class DepositByUserTest extends BaseUiTest {
     @Test
     public void userCanDepositAccountWithIncorrectAmount() {
         CreateUserRequest user = AdminSteps.createUser().request();
-        authAsUser(user);
+//        authAsUser(user);
 
         CreateAccountResponse accountInfo = UserSteps.createAccount(user);
 

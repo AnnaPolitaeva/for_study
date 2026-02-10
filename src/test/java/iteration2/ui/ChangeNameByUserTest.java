@@ -21,7 +21,7 @@ public class ChangeNameByUserTest extends BaseUiTest {
     public void userCanChangeNameWithCorrectNameTest() {
 
         CreateUserRequest user = AdminSteps.createUser().request();
-        authAsUser(user);
+//        authAsUser(user);
 
         new UserDashboard().open().goToChangeName().getPage(EditProfile.class).getEditProfileText().shouldBe(Condition.visible);
 
@@ -40,7 +40,7 @@ public class ChangeNameByUserTest extends BaseUiTest {
     @Test
     public void userCanChangeNameWithIncorrectNameTest() {
         CreateUserRequest user = AdminSteps.createUser().request();
-        authAsUser(user);
+//        authAsUser(user);
 
         new UserDashboard().open().goToChangeName().getPage(EditProfile.class).getEditProfileText().shouldBe(Condition.visible);
 
@@ -58,7 +58,7 @@ public class ChangeNameByUserTest extends BaseUiTest {
     @Test
     public void userCanChangeNameWithEmptyNameTest() {
         CreateUserRequest user = AdminSteps.createUser().request();
-        authAsUser(user);
+//        authAsUser(user);
 
         new UserDashboard().open().goToChangeName().getPage(EditProfile.class).getEditProfileText().shouldBe(Condition.visible);
 
