@@ -29,7 +29,7 @@ public class ChangeNameByUserTest extends BaseTest {
                         createUserRequest.getUsername(),
                         createUserRequest.getPassword()),
                 Endpoint.CUSTOMER_PROFILE,
-                ResponseSpecs.requestReturnsOKForChangeName())
+                ResponseSpecs.requestReturnsOKAndMessageSuccess(ApiAtributesOfResponse.MESSAGE_KEY, ApiAtributesOfResponse.PROFILE_UPDATE_SUCCESS))
                 .update(changeNameRequest);
 
         // проверка того, что имя установилось

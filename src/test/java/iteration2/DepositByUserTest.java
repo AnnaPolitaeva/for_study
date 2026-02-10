@@ -1,5 +1,6 @@
 package iteration2;
 
+import generators.RandomData;
 import iteration1.BaseTest;
 import models.*;
 import org.junit.jupiter.api.Test;
@@ -82,7 +83,6 @@ public class DepositByUserTest extends BaseTest {
 
     @Test
     public void userCanNotDepositDifferentAccountTest() {
-        private float amount = RandomData.getAmount();
         CreateUserRequest createUserRequest = AdminSteps.createUser().request();
 
         UserSteps.createAccount(createUserRequest);
@@ -93,7 +93,7 @@ public class DepositByUserTest extends BaseTest {
 
         DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
                 .id(createAccountDifferentUserResponse.getId())
-                .balance(amount)
+                .balance(RandomData.getAmount())
                 .build();
 
         new CrudRequester(

@@ -47,9 +47,8 @@ public class TransferMoneyByUserTest extends BaseTest {
 
         softly.assertThat(transferMoneyResponse.getMessage()).isEqualTo(ApiAtributesOfResponse.TRANSFER_SUCCESS);
 
-        UserSteps.checkBalance(createUserRequest, createSecondAccountResponse.getId(), createSecondAccountResponse.getBalance() + amount);
-
-        UserSteps.checkBalance(createUserRequest, createAccountResponse.getId(), depositAccountResponse.getBalance() - amount);
+        UserSteps.checkBalancesAfterTransfer(createUserRequest, createSecondAccountResponse.getId(), createSecondAccountResponse.getBalance() + amount,
+                createUserRequest, createAccountResponse.getId(), depositAccountResponse.getBalance() - amount);
     }
 
     @Test
@@ -66,7 +65,6 @@ public class TransferMoneyByUserTest extends BaseTest {
 
         float amount = 0.01F;
 
-        // переводим сумму
         TransferMoneyRequest transferMoneyRequest = TransferMoneyRequest.builder()
                 .senderAccountId(createAccountResponse.getId())
                 .receiverAccountId(createAccountDifferentUserResponse.getId())
@@ -78,14 +76,11 @@ public class TransferMoneyByUserTest extends BaseTest {
                         createUserRequest.getUsername(),
                         createUserRequest.getPassword()),
                 Endpoint.ACCOUNT_TRANSFER,
-                ResponseSpecs.requestReturnsOK(ApiAtributesOfResponse.MESSAGE_KEY, ApiAtributesOfResponse.TRANSFER_SUCCESS))
+                ResponseSpecs.requestReturnsOKAndMessageSuccess(ApiAtributesOfResponse.MESSAGE_KEY, ApiAtributesOfResponse.TRANSFER_SUCCESS))
                 .post(transferMoneyRequest);
 
-        // проверка того, что аккаунт пополнился
-        UserSteps.checkBalance(createDifferentUserRequest, createAccountDifferentUserResponse.getId(), createAccountDifferentUserResponse.getBalance() + amount);
-
-        // проверка того, что баланс на отправляющем аккаунте уменьшился
-        UserSteps.checkBalance(createUserRequest, createAccountResponse.getId(), depositAccountResponse.getBalance() - amount);
+        UserSteps.checkBalancesAfterTransfer(createDifferentUserRequest, createAccountDifferentUserResponse.getId(), createAccountDifferentUserResponse.getBalance() + amount,
+                createUserRequest, createAccountResponse.getId(), depositAccountResponse.getBalance() - amount);
     }
 
     public static Stream<Arguments> invalidData() {
@@ -121,26 +116,18 @@ public class TransferMoneyByUserTest extends BaseTest {
                 ResponseSpecs.requestReturnsBadRequest(error))
                 .post(transferMoneyRequest);
 
-        // проверка того, что аккаунт не пополнился
-        UserSteps.checkBalance(createUserRequest, createSecondAccountResponse.getId(), createSecondAccountResponse.getBalance());
-
-        // проверка того, что баланс на отправляющем аккаунте не уменьшился
-        UserSteps.checkBalance(createUserRequest, createAccountResponse.getId(), depositAccountResponse.getBalance());
+        UserSteps.checkBalancesAfterTransfer(createUserRequest, createSecondAccountResponse.getId(), createSecondAccountResponse.getBalance(),
+                createUserRequest, createAccountResponse.getId(), depositAccountResponse.getBalance());
     }
 
     @Test
     public void userCanNotTransferAmountMoreThenBalanceTest() {
-
-        //создание пользователя
         CreateUserRequest createUserRequest = AdminSteps.createUser().request();
 
-        //создание аккаунта
         CreateAccountResponse createAccountResponse = UserSteps.createAccount(createUserRequest);
 
-        //создание второго аккаунта
         CreateAccountResponse createSecondAccountResponse = UserSteps.createAccount(createUserRequest);
 
-        // переводим сумму
         TransferMoneyRequest transferMoneyRequest = TransferMoneyRequest.builder()
                 .senderAccountId(createAccountResponse.getId())
                 .receiverAccountId(createSecondAccountResponse.getId())
@@ -155,10 +142,7 @@ public class TransferMoneyByUserTest extends BaseTest {
                 ResponseSpecs.requestReturnsBadRequest(ApiAtributesOfResponse.ERROR_TRANSFER))
                 .post(transferMoneyRequest);
 
-        // проверка того, что аккаунт не пополнился
-        UserSteps.checkBalance(createUserRequest, createSecondAccountResponse.getId(), createSecondAccountResponse.getBalance());
-
-        // проверка того, что баланс на отправляющем аккаунте не уменьшился
-        UserSteps.checkBalance(createUserRequest, createAccountResponse.getId(), createSecondAccountResponse.getBalance());
+        UserSteps.checkBalancesAfterTransfer(createUserRequest, createSecondAccountResponse.getId(), createSecondAccountResponse.getBalance(),
+                createUserRequest, createAccountResponse.getId(), createSecondAccountResponse.getBalance());
     }
 }
