@@ -1,121 +1,86 @@
 package iteration2;
 
-import io.restassured.RestAssured;
-import io.restassured.filter.log.RequestLoggingFilter;
-import io.restassured.filter.log.ResponseLoggingFilter;
-import io.restassured.http.ContentType;
-import org.apache.http.HttpStatus;
-import org.junit.jupiter.api.BeforeAll;
+import generators.RandomData;
+import io.qameta.allure.Allure;
+import iteration1.BaseTest;
+import models.ChangeNameRequest;
+import models.CreateUserRequest;
+import models.GetInfoResponse;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import requests.ChangeNameRequester;
+import requests.GetInfoRequester;
+import specs.RequestSpecs;
+import specs.ResponseSpecs;
 
-import java.util.List;
-
-import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.equalTo;
-
-public class ChangeNameByUserTest {
-    static String userAuthHeader;
-
-    @BeforeAll
-    public static void setupRestAssured() {
-        RestAssured.filters(
-                List.of(new RequestLoggingFilter(),
-                        new ResponseLoggingFilter()));
-
-        // создание пользователя
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", "Basic YWRtaW46YWRtaW4=")
-                .body("""
-                        {
-                          "username": "Ann123456",
-                          "password": "Ann123456!",
-                          "role": "USER"
-                        }
-                        """)
-                .post("http://localhost:4111/api/v1/admin/users")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_CREATED);
-
-        // получаем токен юзера
-        userAuthHeader = given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .body("""
-                        {
-                          "username": "Ann123456",
-                          "password": "Ann123456!"
-                        }
-                        """)
-                .post("http://localhost:4111/api/v1/auth/login")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .extract()
-                .header("Authorization");
-    }
+public class ChangeNameByUserTest extends BaseTest {
+    private String newName;
+    private CreateUserRequest createUserRequest;
+    private GetInfoResponse getInfoResponse;
 
     @Test
-    public void UserCanChangeNameWithCorrectNameTest() {
+    public void userCanChangeNameWithCorrectNameTest() {
 
-        given()
-                .header("Authorization", userAuthHeader)
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .body("""
-                        {
-                          "name": "Bon Jovi"
-                        }
-                        """)
-                .put("http://localhost:4111/api/v1/customer/profile")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .body("message", equalTo("Profile updated successfully"));
+        Allure.step("Подготовка тестовых данных", () -> {
+            newName = RandomData.getName();
+            createUserRequest = createUser();
+        });
 
-        // проверка того, что имя поменялось
-        given()
-                .header("Authorization", userAuthHeader)
-                .accept(ContentType.JSON)
-                .get("http://localhost:4111/api/v1/customer/profile")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .body("name", equalTo("Bon Jovi"));
+        Allure.step("Изменение имени пользователя", () -> {
+            ChangeNameRequest changeNameRequest = ChangeNameRequest.builder()
+                    .name(newName)
+                    .build();
+
+            new ChangeNameRequester(
+                    RequestSpecs.authAsUser(
+                            createUserRequest.getUsername(),
+                            createUserRequest.getPassword()),
+                    ResponseSpecs.requestReturnsOKAndMessageSuccess())
+                    .post(changeNameRequest);
+        });
+
+        Allure.step("Проверка изменений имени пользователя", () -> {
+            getInfoResponse = new GetInfoRequester(
+                    RequestSpecs.authAsUser(
+                            createUserRequest.getUsername(),
+                            createUserRequest.getPassword()),
+                    ResponseSpecs.requestReturnsOK())
+                    .get().extract().as(GetInfoResponse.class);
+
+            softly.assertThat(getInfoResponse.getName()).isEqualTo(newName);
+        });
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"Ann 123", "Sara  Parker", "Mike!Shein", "David"})
-    public void UserCanChangeNameWithIncorrectNameTest(String input) {
-        String json = String.format("""
-                {
-                  "name": "%s"
-                }
-                """, input);
+    public void userCanChangeNameWithIncorrectNameTest(String input) {
+        Allure.step("Подготовка тестовых данных", () -> {
+            createUserRequest = createUser();
+        });
 
-        given()
-                .header("Authorization", userAuthHeader)
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .body(json)
-                .put("http://localhost:4111/api/v1/customer/profile")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_BAD_REQUEST)
-                .body(equalTo("Name must contain two words with letters only"));
+        Allure.step("Изменение имени пользователя некорректными данными", () -> {
+            ChangeNameRequest changeNameRequest = ChangeNameRequest.builder()
+                    .name(input)
+                    .build();
 
-        // проверка того, что имя не поменялось
-        given()
-                .header("Authorization", userAuthHeader)
-                .accept(ContentType.JSON)
-                .get("http://localhost:4111/api/v1/customer/profile")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .body("name", equalTo("Bon Jovi"));
+            new ChangeNameRequester(
+                    RequestSpecs.authAsUser(
+                            createUserRequest.getUsername(),
+                            createUserRequest.getPassword()),
+                    ResponseSpecs.requestReturnsBadRequestForChangeName())
+                    .post(changeNameRequest);
+        });
+
+        Allure.step("Проверка, что имя пользователя не изменилось", () -> {
+            GetInfoResponse getInfoResponse = new GetInfoRequester(
+                    RequestSpecs.authAsUser(
+                            createUserRequest.getUsername(),
+                            createUserRequest.getPassword()),
+                    ResponseSpecs.requestReturnsOK())
+                    .get().extract().as(GetInfoResponse.class);
+
+            softly.assertThat(getInfoResponse.getName()).isEqualTo(null);
+        });
     }
 }

@@ -1,558 +1,269 @@
 package iteration2;
 
-import io.restassured.RestAssured;
-import io.restassured.filter.log.RequestLoggingFilter;
-import io.restassured.filter.log.ResponseLoggingFilter;
-import io.restassured.http.ContentType;
-import org.apache.http.HttpStatus;
-import org.junit.jupiter.api.BeforeAll;
+import generators.RandomData;
+import io.qameta.allure.Allure;
+import iteration1.BaseTest;
+import models.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import requests.DepositAccountRequester;
+import requests.GetInfoRequester;
+import requests.TransferMoneyRequester;
+import specs.RequestSpecs;
+import specs.ResponseSpecs;
 
-import java.util.List;
-import java.util.Locale;
 import java.util.stream.Stream;
 
-import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.equalTo;
-
-public class TransferMoneyByUserTest {
-    static String userAuthHeader;
-    static String differentUserAuthHeader;
-    static int accountId;
-    static int secondAccountId;
-    static int differentAccountId;
-
-    @BeforeAll
-    public static void setupRestAssured() {
-        RestAssured.filters(
-                List.of(new RequestLoggingFilter(),
-                        new ResponseLoggingFilter()));
-
-        // создание пользователя
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", "Basic YWRtaW46YWRtaW4=")
-                .body("""
-                        {
-                          "username": "Ann12345",
-                          "password": "Ann12345!",
-                          "role": "USER"
-                        }
-                        """)
-                .post("http://localhost:4111/api/v1/admin/users")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_CREATED);
-
-        // получаем токен юзера
-        userAuthHeader = given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .body("""
-                        {
-                          "username": "Ann12345",
-                          "password": "Ann12345!"
-                        }
-                        """)
-                .post("http://localhost:4111/api/v1/auth/login")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .extract()
-                .header("Authorization");
-
-        // создаем первый аккаунт(счет) и забираем его id
-        accountId = given()
-                .header("Authorization", userAuthHeader)
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .post("http://localhost:4111/api/v1/accounts")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_CREATED)
-                .extract()
-                .path("id");
-
-        // создаем второй аккаунт(счет) и забираем его id
-        secondAccountId = given()
-                .header("Authorization", userAuthHeader)
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .post("http://localhost:4111/api/v1/accounts")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_CREATED)
-                .extract()
-                .path("id");
-
-        // создание другого пользователя
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", "Basic YWRtaW46YWRtaW4=")
-                .body("""
-                        {
-                          "username": "Ann54321",
-                          "password": "Ann54321!",
-                          "role": "USER"
-                        }
-                        """)
-                .post("http://localhost:4111/api/v1/admin/users")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_CREATED);
-
-        // получаем токен другого юзера
-        differentUserAuthHeader = given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .body("""
-                        {
-                          "username": "Ann54321",
-                          "password": "Ann54321!"
-                        }
-                        """)
-                .post("http://localhost:4111/api/v1/auth/login")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .extract()
-                .header("Authorization");
-
-        // создаем аккаунт(счет) у другого юзера и забираем его id
-        differentAccountId = given()
-                .header("Authorization", differentUserAuthHeader)
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .post("http://localhost:4111/api/v1/accounts")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_CREATED)
-                .extract()
-                .path("id");
-    }
+public class TransferMoneyByUserTest extends BaseTest {
+    private CreateUserRequest createUserRequest;
+    private CreateAccountResponse createAccountResponse;
+    private CreateUserRequest createDifferentUserRequest;
+    private CreateAccountResponse createAccountDifferentUserResponse;
+    private CreateAccountResponse createSecondAccountResponse;
+    private DepositAccountResponse depositAccountResponse;
+    private TransferMoneyResponse transferMoneyResponse;
+    private float amount;
 
     @ParameterizedTest
     @ValueSource(floats = {9999.99F, 10000F})
     public void userCanTransferCorrectAmountOnOwnAccountTest(float amount) {
-        String json1 = String.format("""
-                {
-                  "id": %d,
-                  "balance": 5000.00
-                }
-                """, accountId);
-        //пополнение аккаунта
-        given()
-                .header("Authorization", userAuthHeader)
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .body(json1)
-                .post("http://localhost:4111/api/v1/accounts/deposit")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK);
+        Allure.step("Подготовка тестовых данных", () -> {
+            createUserRequest = createUser();
+            createAccountResponse = createAccount(createUserRequest);
+            createSecondAccountResponse = createAccount(createUserRequest);
+            DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
+                    .id(createAccountResponse.getId())
+                    .balance(5000F)
+                    .build();
 
-        given()
-                .header("Authorization", userAuthHeader)
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .body(json1)
-                .post("http://localhost:4111/api/v1/accounts/deposit")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK);
+            new DepositAccountRequester(
+                    RequestSpecs.authAsUser(
+                            createUserRequest.getUsername(),
+                            createUserRequest.getPassword()),
+                    ResponseSpecs.requestReturnsOK())
+                    .post(depositAccountRequest).extract().as(DepositAccountResponse.class);
 
+            depositAccountResponse = new DepositAccountRequester(
+                    RequestSpecs.authAsUser(
+                            createUserRequest.getUsername(),
+                            createUserRequest.getPassword()),
+                    ResponseSpecs.requestReturnsOK())
+                    .post(depositAccountRequest).extract().as(DepositAccountResponse.class);
+        });
 
-        // сначала смотрим сколько на балансе отправляющего аккаунта
-        float balance1 = given()
-                .header("Authorization", userAuthHeader)
-                .accept(ContentType.JSON)
-                .get("http://localhost:4111/api/v1/customer/profile")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .extract()
-                .path(String.format("accounts.find { it.id == %d }.balance", accountId));
+        Allure.step("Перевод корректной суммы с одного аккаунта на другой", () -> {
+            TransferMoneyRequest transferMoneyRequest = TransferMoneyRequest.builder()
+                    .senderAccountId(createAccountResponse.getId())
+                    .receiverAccountId(createSecondAccountResponse.getId())
+                    .amount(amount)
+                    .build();
 
-        // сначала смотрим сколько на балансе получающего аккаунта
-        float balance2 = given()
-                .header("Authorization", userAuthHeader)
-                .accept(ContentType.JSON)
-                .get("http://localhost:4111/api/v1/customer/profile")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .extract()
-                .path(String.format("accounts.find { it.id == %d }.balance", secondAccountId));
+            transferMoneyResponse = new TransferMoneyRequester(
+                    RequestSpecs.authAsUser(
+                            createUserRequest.getUsername(),
+                            createUserRequest.getPassword()),
+                    ResponseSpecs.requestReturnsOK())
+                    .put(transferMoneyRequest).extract().as(TransferMoneyResponse.class);
 
+            softly.assertThat(transferMoneyResponse.getMessage()).isEqualTo("Transfer successful");
+        });
 
-        String json2 = String.format(Locale.US, """
-                {
-                  "senderAccountId": %d,
-                  "receiverAccountId": %d,
-                  "amount": %.2f
-                }
-                """, accountId, secondAccountId, amount);
+        Allure.step("Проверка изменений баланса аккаунта-отправителя", () -> {
+            new GetInfoRequester(
+                    RequestSpecs.authAsUser(
+                            createUserRequest.getUsername(),
+                            createUserRequest.getPassword()),
+                    ResponseSpecs.requestReturnsOK(createAccountResponse.getId(), Math.round((depositAccountResponse.getBalance() - amount) * 100) / 100.00f))
+                    .get();
+        });
 
-        // осуществляем перевод суммы
-        given()
-                .header("Authorization", userAuthHeader)
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .body(json2)
-                .post("http://localhost:4111/api/v1/accounts/transfer")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK);
-
-
-        // проверка того, что баланс отправляющего аккаунта изменился
-        given()
-                .header("Authorization", userAuthHeader)
-                .accept(ContentType.JSON)
-                .get("http://localhost:4111/api/v1/customer/profile")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .body(String.format("accounts.find { it.id == %d }.balance", accountId), equalTo(Math.round((balance1 - amount) * 100) / 100.0f));
-
-        // проверка того, что баланс получающего аккаунта изменился
-        given()
-                .header("Authorization", userAuthHeader)
-                .accept(ContentType.JSON)
-                .get("http://localhost:4111/api/v1/customer/profile")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .body(String.format("accounts.find { it.id == %d }.balance", secondAccountId), equalTo(Math.round((balance2 + amount) * 100) / 100.0f));
+        Allure.step("Проверка изменений баланса аккаунта-получателя", () -> {
+            new GetInfoRequester(
+                    RequestSpecs.authAsUser(
+                            createUserRequest.getUsername(),
+                            createUserRequest.getPassword()),
+                    ResponseSpecs.requestReturnsOK(createSecondAccountResponse.getId(), createSecondAccountResponse.getBalance() + amount))
+                    .get();
+        });
     }
 
     @Test
     public void userCanTransferCorrectAmountOnAccountAnotherUserTest() {
-        String json1 = String.format("""
-                {
-                  "id": %d,
-                  "balance": 1
-                }
-                """, accountId);
-        //пополнение аккаунта
-        given()
-                .header("Authorization", userAuthHeader)
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .body(json1)
-                .post("http://localhost:4111/api/v1/accounts/deposit")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK);
+        Allure.step("Подготовка тестовых данных", () -> {
+            createUserRequest = createUser();
+            createAccountResponse = createAccount(createUserRequest);
+            createDifferentUserRequest = createUser();
+            createAccountDifferentUserResponse = createAccount(createDifferentUserRequest);
 
-        // сначала смотрим сколько на балансе отправляющего аккаунта
-        float balance1 = given()
-                .header("Authorization", userAuthHeader)
-                .accept(ContentType.JSON)
-                .get("http://localhost:4111/api/v1/customer/profile")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .extract()
-                .path(String.format("accounts.find { it.id == %d }.balance", accountId));
+            DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
+                    .id(createAccountResponse.getId())
+                    .balance(1F)
+                    .build();
 
-        // сначала смотрим сколько на балансе получающего аккаунта
-        float balance2 = given()
-                .header("Authorization", differentUserAuthHeader)
-                .accept(ContentType.JSON)
-                .get("http://localhost:4111/api/v1/customer/profile")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .extract()
-                .path(String.format("accounts.find { it.id == %d }.balance", differentAccountId));
+            depositAccountResponse = new DepositAccountRequester(
+                    RequestSpecs.authAsUser(
+                            createUserRequest.getUsername(),
+                            createUserRequest.getPassword()),
+                    ResponseSpecs.requestReturnsOK())
+                    .post(depositAccountRequest).extract().as(DepositAccountResponse.class);
+        });
 
-        String json = String.format("""
-                {
-                  "senderAccountId": %d,
-                  "receiverAccountId": %d,
-                  "amount": 0.01
-                }
-                """, accountId, differentAccountId);
+        Allure.step("Перевод корректной суммы с одного аккаунта на другой", () -> {
+            TransferMoneyRequest transferMoneyRequest = TransferMoneyRequest.builder()
+                    .senderAccountId(createAccountResponse.getId())
+                    .receiverAccountId(createAccountDifferentUserResponse.getId())
+                    .amount(0.01F)
+                    .build();
 
-        // осуществляем перевод суммы
-        given()
-                .header("Authorization", userAuthHeader)
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .body(json)
-                .post("http://localhost:4111/api/v1/accounts/transfer")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK);
+            transferMoneyResponse = new TransferMoneyRequester(
+                    RequestSpecs.authAsUser(
+                            createUserRequest.getUsername(),
+                            createUserRequest.getPassword()),
+                    ResponseSpecs.requestReturnsOK())
+                    .put(transferMoneyRequest).extract().as(TransferMoneyResponse.class);
 
-        // проверка того, что баланс отправляющего аккаунта изменился
-        given()
-                .header("Authorization", userAuthHeader)
-                .accept(ContentType.JSON)
-                .get("http://localhost:4111/api/v1/customer/profile")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .body(String.format("accounts.find { it.id == %d }.balance", accountId), equalTo(balance1 - 0.01F));
+            softly.assertThat(transferMoneyResponse.getMessage()).isEqualTo("Transfer successful");
+        });
 
-        // проверка того, что баланс получающего аккаунта изменился
-        given()
-                .header("Authorization", differentUserAuthHeader)
-                .accept(ContentType.JSON)
-                .get("http://localhost:4111/api/v1/customer/profile")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .body(String.format("accounts.find { it.id == %d }.balance", differentAccountId), equalTo(balance2 + 0.01F));
+        Allure.step("Проверка изменений баланса аккаунта-отправителя", () -> {
+            new GetInfoRequester(
+                    RequestSpecs.authAsUser(
+                            createUserRequest.getUsername(),
+                            createUserRequest.getPassword()),
+                    ResponseSpecs.requestReturnsOK(createAccountResponse.getId(), depositAccountResponse.getBalance() - 0.01F))
+                    .get();
+        });
+
+        Allure.step("Проверка изменений баланса аккаунта-получателя", () -> {
+            new GetInfoRequester(
+                    RequestSpecs.authAsUser(
+                            createDifferentUserRequest.getUsername(),
+                            createDifferentUserRequest.getPassword()),
+                    ResponseSpecs.requestReturnsOK(createAccountDifferentUserResponse.getId(), createAccountDifferentUserResponse.getBalance() + 0.01F))
+                    .get();
+        });
     }
 
     public static Stream<Arguments> invalidData() {
         return Stream.of(
-                Arguments.of(10000.01, "Transfer amount cannot exceed 10000"),
-                Arguments.of(-0.01, "Transfer amount must be at least 0.01"),
-                Arguments.of(0, "Transfer amount must be at least 0.01")
+                Arguments.of(10000.01F, "Transfer amount cannot exceed 10000"),
+                Arguments.of(-0.01F, "Transfer amount must be at least 0.01"),
+                Arguments.of(0F, "Transfer amount must be at least 0.01")
         );
     }
 
     @ParameterizedTest
     @MethodSource("invalidData")
-    public void userCanNotTransferInvalidAmountTest(double amount, String error) {
-        String json1 = String.format("""
-                {
-                  "id": %d,
-                  "balance": 5000
-                }
-                """, accountId);
-        //пополнение аккаунта
-        given()
-                .header("Authorization", userAuthHeader)
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .body(json1)
-                .post("http://localhost:4111/api/v1/accounts/deposit")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK);
-        given()
-                .header("Authorization", userAuthHeader)
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .body(json1)
-                .post("http://localhost:4111/api/v1/accounts/deposit")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK);
-        given()
-                .header("Authorization", userAuthHeader)
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .body(json1)
-                .post("http://localhost:4111/api/v1/accounts/deposit")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK);
+    public void userCanNotTransferInvalidAmountTest(float amount, String error) {
+        Allure.step("Подготовка тестовых данных", () -> {
+            createUserRequest = createUser();
+            createAccountResponse = createAccount(createUserRequest);
+            createSecondAccountResponse = createAccount(createUserRequest);
+            DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
+                    .id(createAccountResponse.getId())
+                    .balance(5000F)
+                    .build();
 
-        // сначала смотрим сколько на балансе отправляющего аккаунта
-        float balance1 = given()
-                .header("Authorization", userAuthHeader)
-                .accept(ContentType.JSON)
-                .get("http://localhost:4111/api/v1/customer/profile")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .extract()
-                .path(String.format("accounts.find { it.id == %d }.balance", accountId));
+            new DepositAccountRequester(
+                    RequestSpecs.authAsUser(
+                            createUserRequest.getUsername(),
+                            createUserRequest.getPassword()),
+                    ResponseSpecs.requestReturnsOK())
+                    .post(depositAccountRequest).extract().as(DepositAccountResponse.class);
 
-        // сначала смотрим сколько на балансе получающего аккаунта
-        float balance2 = given()
-                .header("Authorization", userAuthHeader)
-                .accept(ContentType.JSON)
-                .get("http://localhost:4111/api/v1/customer/profile")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .extract()
-                .path(String.format("accounts.find { it.id == %d }.balance", secondAccountId));
+            new DepositAccountRequester(
+                    RequestSpecs.authAsUser(
+                            createUserRequest.getUsername(),
+                            createUserRequest.getPassword()),
+                    ResponseSpecs.requestReturnsOK())
+                    .post(depositAccountRequest).extract().as(DepositAccountResponse.class);
 
+            depositAccountResponse = new DepositAccountRequester(
+                    RequestSpecs.authAsUser(
+                            createUserRequest.getUsername(),
+                            createUserRequest.getPassword()),
+                    ResponseSpecs.requestReturnsOK())
+                    .post(depositAccountRequest).extract().as(DepositAccountResponse.class);
+        });
 
-        String json = String.format(Locale.US, """
-                {
-                  "senderAccountId": %d,
-                  "receiverAccountId": %d,
-                  "amount": %.2f
-                }
-                """, accountId, secondAccountId, amount);
+        Allure.step("Перевод НЕкорректной суммы", () -> {
+            TransferMoneyRequest transferMoneyRequest = TransferMoneyRequest.builder()
+                    .senderAccountId(createAccountResponse.getId())
+                    .receiverAccountId(createSecondAccountResponse.getId())
+                    .amount(amount)
+                    .build();
 
-        // осуществляем перевод суммы
-        given()
-                .header("Authorization", userAuthHeader)
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .body(json)
-                .post("http://localhost:4111/api/v1/accounts/transfer")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_BAD_REQUEST)
-                .body(equalTo(error));
+            new TransferMoneyRequester(
+                    RequestSpecs.authAsUser(
+                            createUserRequest.getUsername(),
+                            createUserRequest.getPassword()),
+                    ResponseSpecs.requestReturnsBadRequest(error))
+                    .put(transferMoneyRequest);
+        });
 
-        // проверка того, что баланс отправляющего аккаунта не изменился
-        given()
-                .header("Authorization", userAuthHeader)
-                .accept(ContentType.JSON)
-                .get("http://localhost:4111/api/v1/customer/profile")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .body(String.format("accounts.find { it.id == %d }.balance", accountId), equalTo(balance1));
+        Allure.step("Проверка, что баланс аккаунта-отправителя не изменился", () -> {
+            new GetInfoRequester(
+                    RequestSpecs.authAsUser(
+                            createUserRequest.getUsername(),
+                            createUserRequest.getPassword()),
+                    ResponseSpecs.requestReturnsOK(createAccountResponse.getId(), createAccountResponse.getBalance()))
+                    .get();
+        });
 
-        // проверка того, что баланс получающего аккаунта не изменился
-        given()
-                .header("Authorization", userAuthHeader)
-                .accept(ContentType.JSON)
-                .get("http://localhost:4111/api/v1/customer/profile")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .body(String.format("accounts.find { it.id == %d }.balance", secondAccountId), equalTo(balance2));
+        Allure.step("Проверка, что баланс аккаунта-получателя не изменился", () -> {
+            new GetInfoRequester(
+                    RequestSpecs.authAsUser(
+                            createUserRequest.getUsername(),
+                            createUserRequest.getPassword()),
+                    ResponseSpecs.requestReturnsOK(createSecondAccountResponse.getId(), createSecondAccountResponse.getBalance()))
+                    .get();
+        });
     }
 
     @Test
     public void userCanNotTransferAmountMoreThenBalanceTest() {
 
-        // сначала смотрим сколько на балансе получающего аккаунта
-        float balance = given()
-                .header("Authorization", differentUserAuthHeader)
-                .accept(ContentType.JSON)
-                .get("http://localhost:4111/api/v1/customer/profile")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .extract()
-                .path(String.format("accounts.find { it.id == %d }.balance", differentAccountId));
+        Allure.step("Подготовка тестовых данных", () -> {
+            createUserRequest = createUser();
+            createAccountResponse = createAccount(createUserRequest);
+            createSecondAccountResponse = createAccount(createUserRequest);
+            amount = RandomData.getAmount();
+        });
 
-        //создаем новый аккаунт, чтоб на нем был нулевой баланс и вытягиваем его id
-        int newAccountId = given()
-                .header("Authorization", userAuthHeader)
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .post("http://localhost:4111/api/v1/accounts")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_CREATED)
-                .extract()
-                .path("id");
+        Allure.step("Перевод корректной суммы с аккаунта с нулевым балансом", () -> {
+            TransferMoneyRequest transferMoneyRequest = TransferMoneyRequest.builder()
+                    .senderAccountId(createAccountResponse.getId())
+                    .receiverAccountId(createSecondAccountResponse.getId())
+                    .amount(amount)
+                    .build();
 
-        String json = String.format("""
-                {
-                  "senderAccountId": %d,
-                  "receiverAccountId": %d,
-                  "amount": 6000
-                }
-                """, newAccountId, differentAccountId);
+            new TransferMoneyRequester(
+                    RequestSpecs.authAsUser(
+                            createUserRequest.getUsername(),
+                            createUserRequest.getPassword()),
+                    ResponseSpecs.requestReturnsBadRequestInTransfer())
+                    .put(transferMoneyRequest);
+        });
 
-        // осуществляем перевод суммы
-        given()
-                .header("Authorization", userAuthHeader)
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .body(json)
-                .post("http://localhost:4111/api/v1/accounts/transfer")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_BAD_REQUEST)
-                .body(equalTo("Invalid transfer: insufficient funds or invalid accounts"));
+        Allure.step("Проверка, что баланс аккаунта-отправителя не изменился", () -> {
+            new GetInfoRequester(
+                    RequestSpecs.authAsUser(
+                            createUserRequest.getUsername(),
+                            createUserRequest.getPassword()),
+                    ResponseSpecs.requestReturnsOK(createAccountResponse.getId(), createAccountResponse.getBalance()))
+                    .get();
+        });
 
-        // проверка того, что баланс отправляющего аккаунта не изменился
-        given()
-                .header("Authorization", userAuthHeader)
-                .accept(ContentType.JSON)
-                .get("http://localhost:4111/api/v1/customer/profile")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .body(String.format("accounts.find { it.id == %d }.balance", accountId), equalTo(0.0F));
-
-        // проверка того, что баланс получающего аккаунта не изменился
-        given()
-                .header("Authorization", differentUserAuthHeader)
-                .accept(ContentType.JSON)
-                .get("http://localhost:4111/api/v1/customer/profile")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .body(String.format("accounts.find { it.id == %d }.balance", differentAccountId), equalTo(balance));
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = {"  ", "сто"})
-    public void userCanNotTransferEmptyAmountOrStringAmountTest(String amount) {
-
-        // сначала смотрим сколько на балансе отправляющего аккаунта
-        float balance1 = given()
-                .header("Authorization", userAuthHeader)
-                .accept(ContentType.JSON)
-                .get("http://localhost:4111/api/v1/customer/profile")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .extract()
-                .path(String.format("accounts.find { it.id == %d }.balance", accountId));
-
-        // сначала смотрим сколько на балансе получающего аккаунта
-        float balance2 = given()
-                .header("Authorization", userAuthHeader)
-                .accept(ContentType.JSON)
-                .get("http://localhost:4111/api/v1/customer/profile")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .extract()
-                .path(String.format("accounts.find { it.id == %d }.balance", secondAccountId));
-
-        String json = String.format("""
-                {
-                  "senderAccountId": %d,
-                  "receiverAccountId": %d,
-                  "amount": %s
-                }
-                """, accountId, secondAccountId, amount);
-
-        // осуществляем перевод суммы
-        given()
-                .header("Authorization", userAuthHeader)
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .body(json)
-                .post("http://localhost:4111/api/v1/accounts/transfer")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_BAD_REQUEST);
-
-        // проверка того, что баланс отправляющего аккаунта не изменился
-        given()
-                .header("Authorization", userAuthHeader)
-                .accept(ContentType.JSON)
-                .get("http://localhost:4111/api/v1/customer/profile")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .body(String.format("accounts.find { it.id == %d }.balance", accountId), equalTo(balance1));
-
-        // проверка того, что баланс получающего аккаунта не изменился
-        given()
-                .header("Authorization", userAuthHeader)
-                .accept(ContentType.JSON)
-                .get("http://localhost:4111/api/v1/customer/profile")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .body(String.format("accounts.find { it.id == %d }.balance", secondAccountId), equalTo(balance2));
+        Allure.step("Проверка, что баланс аккаунта-получателя не изменился", () -> {
+            new GetInfoRequester(
+                    RequestSpecs.authAsUser(
+                            createUserRequest.getUsername(),
+                            createUserRequest.getPassword()),
+                    ResponseSpecs.requestReturnsOK(createSecondAccountResponse.getId(), createSecondAccountResponse.getBalance()))
+                    .get();
+        });
     }
 }
