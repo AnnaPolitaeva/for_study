@@ -2,6 +2,7 @@ package iteration2.api;
 
 import iteration1.api.BaseTest;
 import models.*;
+import models.comparison.ModelAssertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -22,13 +23,10 @@ public class DepositByUserTest extends BaseTest {
     @ParameterizedTest
     @ValueSource(floats = {4999.99F, 5000F, 0.01F})
     public void userCanDepositAccountWithCorrectAmountTest(float amount) {
-        //создание пользователя
         CreateUserRequest createUserRequest = AdminSteps.createUser().request();
 
-        //создание аккаунта
         CreateAccountResponse createAccountResponse = UserSteps.createAccount(createUserRequest);
 
-        // осуществляем пополнение аккаунта
         DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
                 .id(createAccountResponse.getId())
                 .balance(amount)
@@ -43,11 +41,21 @@ public class DepositByUserTest extends BaseTest {
                 .post(depositAccountRequest);
 
         softly.assertThat(createAccountResponse.getBalance() + amount).isEqualTo(depositAccountResponse.getBalance());
+
+        GetInfoResponse getInfoResponse = new ValidatedCrudRequester<GetInfoResponse>(
+                RequestSpecs.authAsUser(
+                        createUserRequest.getUsername(),
+                        createUserRequest.getPassword()),
+                Endpoint.CUSTOMER_PROFILE,
+                ResponseSpecs.requestReturnsOK())
+                .get();
+
+        ModelAssertions.assertThatModels(depositAccountRequest, getInfoResponse);
     }
 
     public static Stream<Arguments> invalidData() {
         return Stream.of(
-                Arguments.of(-3000F, "Deposit amount must be at least 0.01"),
+                Arguments.of(RandomData.getNegativeAmount(), "Deposit amount must be at least 0.01"),
                 Arguments.of(-0.01F, "Deposit amount must be at least 0.01"),
                 Arguments.of(0F, "Deposit amount must be at least 0.01"),
                 Arguments.of(5000.01F, "Deposit amount cannot exceed 5000")
@@ -57,14 +65,10 @@ public class DepositByUserTest extends BaseTest {
     @ParameterizedTest
     @MethodSource("invalidData")
     public void userCanDepositAccountWithInvalidAmountTest(float amount, String error) {
-
-        //создание пользователя
         CreateUserRequest createUserRequest = AdminSteps.createUser().request();
 
-        //создание аккаунта
         CreateAccountResponse createAccountResponse = UserSteps.createAccount(createUserRequest);
 
-        // осуществляем пополнение аккаунта
         DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
                 .id(createAccountResponse.getId())
                 .balance(amount)
@@ -78,34 +82,30 @@ public class DepositByUserTest extends BaseTest {
                 ResponseSpecs.requestReturnsBadRequest(error))
                 .post(depositAccountRequest);
 
-        // проверка того, что аккаунт не пополнился
-        new CrudRequester(
+        GetInfoResponse getInfoResponse = new ValidatedCrudRequester<GetInfoResponse>(
                 RequestSpecs.authAsUser(
                         createUserRequest.getUsername(),
                         createUserRequest.getPassword()),
-                Endpoint.CUSTOMER_PROFILE_GET,
+                Endpoint.CUSTOMER_PROFILE,
                 ResponseSpecs.requestReturnsOK(createAccountResponse.getId(), createAccountResponse.getBalance()))
-                .get(null);
+                .get();
+
+        ModelAssertions.assertThatModels(createAccountResponse, getInfoResponse);
     }
 
     @Test
     public void userCanNotDepositDifferentAccountTest() {
-        //создание пользователя
         CreateUserRequest createUserRequest = AdminSteps.createUser().request();
 
-        //создание аккаунта
         UserSteps.createAccount(createUserRequest);
 
-        //создание второго пользователя
         CreateUserRequest createDifferentUserRequest = AdminSteps.createUser().request();
 
-        //создание аккаунта второго пользователя
         CreateAccountResponse createAccountDifferentUserResponse = UserSteps.createAccount(createDifferentUserRequest);
 
-        // осуществляем пополнение аккаунта
         DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
                 .id(createAccountDifferentUserResponse.getId())
-                .balance(2000F)
+                .balance(RandomData.getSmallAmount())
                 .build();
 
         new CrudRequester(
@@ -113,16 +113,17 @@ public class DepositByUserTest extends BaseTest {
                         createUserRequest.getUsername(),
                         createUserRequest.getPassword()),
                 Endpoint.ACCOUNT_DEPOSIT,
-                ResponseSpecs.requestReturnsForbidden("Unauthorized access to account"))
+                ResponseSpecs.requestReturnsForbidden(ApiAtributesOfResponse.ERROR_UNAUTHORISED))
                 .post(depositAccountRequest);
 
-        // проверка того, что аккаунт не пополнился
-        new CrudRequester(
+        GetInfoResponse getInfoResponse = new ValidatedCrudRequester<GetInfoResponse>(
                 RequestSpecs.authAsUser(
                         createDifferentUserRequest.getUsername(),
                         createDifferentUserRequest.getPassword()),
-                Endpoint.CUSTOMER_PROFILE_GET,
+                Endpoint.CUSTOMER_PROFILE,
                 ResponseSpecs.requestReturnsOK(createAccountDifferentUserResponse.getId(), createAccountDifferentUserResponse.getBalance()))
-                .get(null);
+                .get();
+
+        ModelAssertions.assertThatModels(createAccountDifferentUserResponse, getInfoResponse);
     }
 }

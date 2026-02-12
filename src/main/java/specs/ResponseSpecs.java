@@ -26,10 +26,10 @@ public class ResponseSpecs {
                 .build();
     }
 
-    public static ResponseSpecification requestReturnsOK(String errorKey, String errorValue) {
+    public static ResponseSpecification requestReturnsOKAndMessageSuccess(String key, String text) {
         return defaultResponseBuilder()
                 .expectStatusCode(HttpStatus.SC_OK)
-                .expectBody(errorKey, equalTo(errorValue))
+                .expectBody(key, equalTo(text))
                 .build();
     }
 
@@ -54,16 +54,10 @@ public class ResponseSpecs {
                 .build();
     }
 
-    public static ResponseSpecification requestReturnsBadRequest() {
-        return defaultResponseBuilder()
-                .expectStatusCode(HttpStatus.SC_BAD_REQUEST)
-                .build();
-    }
-
-    public static ResponseSpecification requestReturnsForbidden(String errorValue) {
+    public static ResponseSpecification requestReturnsForbidden(String error) {
         return defaultResponseBuilder()
                 .expectStatusCode(HttpStatus.SC_FORBIDDEN)
-                .expectBody(equalTo(errorValue))
+                .expectBody(equalTo(error))
                 .build();
     }
 }

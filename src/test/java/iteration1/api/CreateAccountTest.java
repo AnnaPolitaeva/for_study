@@ -17,7 +17,7 @@ public class CreateAccountTest extends BaseTest{
         new CrudRequester(RequestSpecs.authAsUser(user.getUsername(), user.getPassword()),
                 Endpoint.ACCOUNT,
                 ResponseSpecs.entityWasCreated())
-                .post(null);
+                .post();
 
         // запросить все аккаунты пользователя и проверить, что наш аккаунт там
 

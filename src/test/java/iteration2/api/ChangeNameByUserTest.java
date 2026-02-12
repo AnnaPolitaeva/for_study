@@ -16,14 +16,12 @@ import specs.ResponseSpecs;
 public class ChangeNameByUserTest extends BaseTest {
 
     @Test
-    public void UserCanChangeNameWithCorrectNameTest() {
+    public void userCanChangeNameWithCorrectNameTest() {
 
-        //создание пользователя
         CreateUserRequest createUserRequest = AdminSteps.createUser().request();
 
-        //изменение имени
         ChangeNameRequest changeNameRequest = ChangeNameRequest.builder()
-                .name("Bon Jovi")
+                .name(RandomData.getName())
                 .build();
 
         new CrudRequester(
@@ -31,29 +29,26 @@ public class ChangeNameByUserTest extends BaseTest {
                         createUserRequest.getUsername(),
                         createUserRequest.getPassword()),
                 Endpoint.CUSTOMER_PROFILE,
-                ResponseSpecs.requestReturnsOK("message", "Profile updated successfully"))
+                ResponseSpecs.requestReturnsOKAndMessageSuccess(ApiAtributesOfResponse.MESSAGE_KEY, ApiAtributesOfResponse.PROFILE_UPDATE_SUCCESS))
                 .update(changeNameRequest);
 
-        // проверка того, что имя установилось
         GetInfoResponse getInfoResponse = new ValidatedCrudRequester<GetInfoResponse>(
                 RequestSpecs.authAsUser(
                         createUserRequest.getUsername(),
                         createUserRequest.getPassword()),
-                Endpoint.CUSTOMER_PROFILE_GET,
+                Endpoint.CUSTOMER_PROFILE,
                 ResponseSpecs.requestReturnsOK())
-                .get(null);
+                .get();
 
         ModelAssertions.assertThatModels(createUserRequest, getInfoResponse).match();
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"Ann 123", "Sara  Parker", "Mike!Shein", "David"})
-    public void UserCanChangeNameWithIncorrectNameTest(String input) {
-        //создание пользователя
+    public void userCanChangeNameWithIncorrectNameTest(String input) {
         CreateUserRequest createUserRequest = AdminSteps.createUser().request();
         CreateUserResponse createUserResponse = AdminSteps.createUser().response();
 
-        //изменение имени
         ChangeNameRequest changeNameRequest = ChangeNameRequest.builder()
                 .name(input)
                 .build();
@@ -63,17 +58,16 @@ public class ChangeNameByUserTest extends BaseTest {
                         createUserRequest.getUsername(),
                         createUserRequest.getPassword()),
                 Endpoint.CUSTOMER_PROFILE,
-                ResponseSpecs.requestReturnsBadRequest("Name must contain two words with letters only"))
+                ResponseSpecs.requestReturnsBadRequest(ApiAtributesOfResponse.ERROR_UPDATE_USERNAME))
                 .update(changeNameRequest);
 
-        // проверка того, что имя не установилось
         GetInfoResponse getInfoResponse = new ValidatedCrudRequester<GetInfoResponse>(
                 RequestSpecs.authAsUser(
                         createUserRequest.getUsername(),
                         createUserRequest.getPassword()),
-                Endpoint.CUSTOMER_PROFILE_GET,
+                Endpoint.CUSTOMER_PROFILE,
                 ResponseSpecs.requestReturnsOK())
-                .get(null);
+                .get();
 
         ModelAssertions.assertThatModels(createUserResponse, getInfoResponse).match();
     }
