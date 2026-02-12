@@ -1,5 +1,6 @@
 package iteration1.api;
 
+import api.configs.Config;
 import models.CreateUserRequest;
 import models.LoginUserRequest;
 import org.hamcrest.Matchers;
