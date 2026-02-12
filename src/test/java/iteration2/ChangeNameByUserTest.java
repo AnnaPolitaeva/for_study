@@ -1,5 +1,6 @@
 package iteration2;
 
+import generators.RandomData;
 import iteration1.BaseTest;
 import models.*;
 import models.comparison.ModelAssertions;
@@ -21,7 +22,7 @@ public class ChangeNameByUserTest extends BaseTest {
         CreateUserRequest createUserRequest = AdminSteps.createUser().request();
 
         ChangeNameRequest changeNameRequest = ChangeNameRequest.builder()
-                .name("Bon Jovi")
+                .name(RandomData.getName())
                 .build();
 
         new CrudRequester(

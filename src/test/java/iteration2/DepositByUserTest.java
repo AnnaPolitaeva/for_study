@@ -56,7 +56,7 @@ public class DepositByUserTest extends BaseTest {
 
     public static Stream<Arguments> invalidData() {
         return Stream.of(
-                Arguments.of(-3000F, "Deposit amount must be at least 0.01"),
+                Arguments.of(RandomData.getNegativeAmount(), "Deposit amount must be at least 0.01"),
                 Arguments.of(-0.01F, "Deposit amount must be at least 0.01"),
                 Arguments.of(0F, "Deposit amount must be at least 0.01"),
                 Arguments.of(5000.01F, "Deposit amount cannot exceed 5000")
@@ -106,7 +106,7 @@ public class DepositByUserTest extends BaseTest {
 
         DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
                 .id(createAccountDifferentUserResponse.getId())
-                .balance(RandomData.getAmount())
+                .balance(RandomData.getSmallAmount())
                 .build();
 
         new CrudRequester(

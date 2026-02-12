@@ -29,9 +29,7 @@ public class TransferMoneyByUserTest extends BaseTest {
 
         CreateAccountResponse createSecondAccountResponse = UserSteps.createAccount(createUserRequest);
 
-        float depositAmount = 10000F;
-
-        DepositAccountResponse depositAccountResponse = UserSteps.depositAccount(createAccountResponse, createUserRequest, depositAmount);
+        DepositAccountResponse depositAccountResponse = UserSteps.depositAccount(createAccountResponse, createUserRequest, RandomData.getBigAmount());
 
         TransferMoneyRequest transferMoneyRequest = TransferMoneyRequest.builder()
                 .senderAccountId(createAccountResponse.getId())
@@ -63,14 +61,13 @@ public class TransferMoneyByUserTest extends BaseTest {
 
         CreateAccountResponse createAccountDifferentUserResponse = UserSteps.createAccount(createDifferentUserRequest);
 
-        DepositAccountResponse depositAccountResponse = UserSteps.depositAccount(createAccountResponse, createUserRequest, 1F);
+        DepositAccountResponse depositAccountResponse = UserSteps.depositAccount(createAccountResponse, createUserRequest, RandomData.getBigAmount());
 
-        float amount = 0.01F;
-
+        float transferAmount = RandomData.getSmallAmount();
         TransferMoneyRequest transferMoneyRequest = TransferMoneyRequest.builder()
                 .senderAccountId(createAccountResponse.getId())
                 .receiverAccountId(createAccountDifferentUserResponse.getId())
-                .amount(amount)
+                .amount(transferAmount)
                 .build();
 
         new CrudRequester(
@@ -81,15 +78,15 @@ public class TransferMoneyByUserTest extends BaseTest {
                 ResponseSpecs.requestReturnsOKAndMessageSuccess(ApiAtributesOfResponse.MESSAGE_KEY, ApiAtributesOfResponse.TRANSFER_SUCCESS))
                 .post(transferMoneyRequest);
 
-        UserSteps.checkBalancesAfterTransfer(createDifferentUserRequest, createAccountDifferentUserResponse.getId(), createAccountDifferentUserResponse.getBalance() + amount,
-                createUserRequest, createAccountResponse.getId(), depositAccountResponse.getBalance() - amount);
+        UserSteps.checkBalancesAfterTransfer(createDifferentUserRequest, createAccountDifferentUserResponse.getId(), createAccountDifferentUserResponse.getBalance() + transferAmount,
+                createUserRequest, createAccountResponse.getId(), depositAccountResponse.getBalance() - transferAmount);
     }
 
     public static Stream<Arguments> invalidData() {
         return Stream.of(
-                Arguments.of(12000F, 10000.01F, "Transfer amount cannot exceed 10000"),
-                Arguments.of(1F, -0.01F, "Transfer amount must be at least 0.01"),
-                Arguments.of(1F, 0F, "Transfer amount must be at least 0.01")
+                Arguments.of(RandomData.getBigAmount(), 10000.01F, "Transfer amount cannot exceed 10000"),
+                Arguments.of(RandomData.getSmallAmount(), -0.01F, "Transfer amount must be at least 0.01"),
+                Arguments.of(RandomData.getSmallAmount(), 0F, "Transfer amount must be at least 0.01")
         );
     }
 
@@ -133,7 +130,7 @@ public class TransferMoneyByUserTest extends BaseTest {
         TransferMoneyRequest transferMoneyRequest = TransferMoneyRequest.builder()
                 .senderAccountId(createAccountResponse.getId())
                 .receiverAccountId(createSecondAccountResponse.getId())
-                .amount(RandomData.getAmount())
+                .amount(RandomData.getSmallAmount())
                 .build();
 
         new CrudRequester(

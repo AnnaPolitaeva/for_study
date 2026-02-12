@@ -20,7 +20,15 @@ public class RandomData {
         return RandomStringUtils.randomAlphabetic(5) + " " + RandomStringUtils.randomAlphabetic(5);
     }
 
-    public static float getAmount() {
+    public static float getNegativeAmount() {
+        return RandomUtils.nextFloat(-3000F, -5F);
+    }
+
+    public static float getSmallAmount() {
         return RandomUtils.nextFloat(0.01F, 5000.00F);
+    }
+
+    public static float getBigAmount() {
+        return RandomUtils.nextFloat(10000.01F, 15000F);
     }
 }
