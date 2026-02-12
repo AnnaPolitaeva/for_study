@@ -29,7 +29,9 @@ public class TransferMoneyByUserTest extends BaseTest {
 
         CreateAccountResponse createSecondAccountResponse = UserSteps.createAccount(createUserRequest);
 
-        DepositAccountResponse depositAccountResponse = UserSteps.depositAccount(createAccountResponse, createUserRequest, 10000F);
+        float depositAmount = 10000F;
+
+        DepositAccountResponse depositAccountResponse = UserSteps.depositAccount(createAccountResponse, createUserRequest, depositAmount);
 
         TransferMoneyRequest transferMoneyRequest = TransferMoneyRequest.builder()
                 .senderAccountId(createAccountResponse.getId())

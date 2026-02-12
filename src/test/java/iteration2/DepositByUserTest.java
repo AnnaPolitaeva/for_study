@@ -117,12 +117,14 @@ public class DepositByUserTest extends BaseTest {
                 ResponseSpecs.requestReturnsForbidden(ApiAtributesOfResponse.ERROR_UNAUTHORISED))
                 .post(depositAccountRequest);
 
-        new CrudRequester(
+        GetInfoResponse getInfoResponse = new ValidatedCrudRequester<GetInfoResponse>(
                 RequestSpecs.authAsUser(
                         createDifferentUserRequest.getUsername(),
                         createDifferentUserRequest.getPassword()),
                 Endpoint.CUSTOMER_PROFILE,
                 ResponseSpecs.requestReturnsOK(createAccountDifferentUserResponse.getId(), createAccountDifferentUserResponse.getBalance()))
                 .get();
+
+        ModelAssertions.assertThatModels(createAccountDifferentUserResponse, getInfoResponse);
     }
 }
