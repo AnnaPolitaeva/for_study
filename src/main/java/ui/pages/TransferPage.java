@@ -16,14 +16,14 @@ public class TransferPage extends BasePage<TransferPage>{
 
     @Override
     public String url() {
-        return "/";
+        return "/transfer";
     }
 
     public TransferPage makeTransfer(long accountId, String recipientAccountNumber, String amount, boolean confirm){
         accountSelector.selectOptionByValue(String.valueOf(accountId));
         enterRecipientAccountNumberInput.sendKeys(recipientAccountNumber);
         enterAmountInput.sendKeys(amount);
-        if (!confirm){
+        if (confirm){
             confirmCheckbox.click();
         }
         sendTranferButton.click();

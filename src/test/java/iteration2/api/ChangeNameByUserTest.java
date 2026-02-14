@@ -1,10 +1,14 @@
 package iteration2.api;
 
-import generators.RandomData;
+import api.models.ChangeNameRequest;
+import api.models.CreateUserRequest;
+import api.generators.RandomData;
+import api.models.CreateUserResponse;
+import api.models.GetInfoResponse;
 import iteration1.api.BaseTest;
 import iteration2.ApiAtributesOfResponse;
 import models.*;
-import models.comparison.ModelAssertions;
+import api.models.comparison.ModelAssertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;

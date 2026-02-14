@@ -12,7 +12,7 @@ public class DepositAccount extends BasePage<DepositAccount>{
 
     @Override
     public String url() {
-        return "/";
+        return "/deposit";
     }
 
     public DepositAccount depositMoney(String amount, long accountId){

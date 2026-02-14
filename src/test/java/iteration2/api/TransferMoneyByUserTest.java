@@ -1,6 +1,6 @@
 package iteration2.api;
 
-import generators.RandomData;
+import api.generators.RandomData;
 import api.models.*;
 import iteration1.api.BaseTest;
 import iteration2.ApiAtributesOfResponse;

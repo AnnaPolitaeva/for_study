@@ -28,7 +28,7 @@ public class UserSteps {
                         createUserRequest.getPassword()),
                 Endpoint.ACCOUNT,
                 ResponseSpecs.entityWasCreated())
-                .post(null);
+                .post();
     }
 
     public static DepositAccountResponse depositAccount(CreateAccountResponse createAccountResponse, CreateUserRequest createUserRequest, float amount){
@@ -68,16 +68,6 @@ public class UserSteps {
                 Endpoint.ACCOUNT_DEPOSIT,
                 ResponseSpecs.requestReturnsOK())
                 .post(depositAccountRequest);
-    }
-
-    public static ValidatableResponse checkBalance(CreateUserRequest createUserRequest, long accountId, float expectedBalance) {
-        return new CrudRequester(
-                RequestSpecs.authAsUser(
-                        createUserRequest.getUsername(),
-                        createUserRequest.getPassword()),
-                Endpoint.CUSTOMER_PROFILE_GET,
-                ResponseSpecs.requestReturnsOK(accountId, expectedBalance))
-                .get(null);
     }
 
     public static void checkBalance(CreateUserRequest createUserRequest, long accountId, float expectedBalance) {
