@@ -1,7 +1,8 @@
-package iteration2;
+package iteration2.api;
 
 import generators.RandomData;
-import iteration1.BaseTest;
+import iteration1.api.BaseTest;
+import iteration2.ApiAtributesOfResponse;
 import models.*;
 import models.comparison.ModelAssertions;
 import org.junit.jupiter.api.Test;

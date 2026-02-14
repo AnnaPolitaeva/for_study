@@ -1,7 +1,6 @@
-package iteration1;
+package iteration1.api;
 
-import configs.Config;
-import generators.RandomModelGenerator;
+import api.configs.Config;
 import models.CreateUserRequest;
 import models.LoginUserRequest;
 import org.hamcrest.Matchers;
