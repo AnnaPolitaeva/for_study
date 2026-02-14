@@ -80,6 +80,21 @@ public class UserSteps {
                 .get(null);
     }
 
+    public static void checkBalance(CreateUserRequest createUserRequest, long accountId, float expectedBalance) {
+        new CrudRequester(
+                RequestSpecs.authAsUser(
+                        createUserRequest.getUsername(),
+                        createUserRequest.getPassword()),
+                Endpoint.CUSTOMER_PROFILE,
+                ResponseSpecs.requestReturnsOK(accountId, Math.round((expectedBalance) * 100) / 100.00f))
+                .get();
+    }
+
+    public static void checkBalancesAfterTransfer(CreateUserRequest createUserRequest1, long accountId1, float expectedBalance1,CreateUserRequest createUserRequest2, long accountId2, float expectedBalance2) {
+        checkBalance(createUserRequest1, accountId1, expectedBalance1);
+        checkBalance(createUserRequest2, accountId2, expectedBalance2);
+    }
+
     public List<CreateAccountResponse> getAllAccounts(){
         return new ValidatedCrudRequester<CreateAccountResponse>(
                 RequestSpecs.authAsUser(username, password),

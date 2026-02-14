@@ -1,7 +1,9 @@
 package iteration2.api;
 
+import generators.RandomData;
 import api.models.*;
 import iteration1.api.BaseTest;
+import iteration2.ApiAtributesOfResponse;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -22,19 +24,14 @@ public class TransferMoneyByUserTest extends BaseTest {
     @ParameterizedTest
     @ValueSource(floats = {9999.99F, 10000F})
     public void userCanTransferCorrectAmountOnOwnAccountTest(float amount) {
-        //создание пользователя
         CreateUserRequest createUserRequest = AdminSteps.createUser().request();
 
-        //создание аккаунта
         CreateAccountResponse createAccountResponse = UserSteps.createAccount(createUserRequest);
 
-        //создание второго аккаунта
         CreateAccountResponse createSecondAccountResponse = UserSteps.createAccount(createUserRequest);
 
-        // осуществляем пополнение аккаунта
-        DepositAccountResponse depositAccountResponse = UserSteps.depositAccount(createAccountResponse, createUserRequest, 10000F);
+        DepositAccountResponse depositAccountResponse = UserSteps.depositAccount(createAccountResponse, createUserRequest, RandomData.getBigAmount());
 
-        // переводим сумму
         TransferMoneyRequest transferMoneyRequest = TransferMoneyRequest.builder()
                 .senderAccountId(createAccountResponse.getId())
                 .receiverAccountId(createSecondAccountResponse.getId())
@@ -49,37 +46,29 @@ public class TransferMoneyByUserTest extends BaseTest {
                 ResponseSpecs.requestReturnsOK())
                 .post(transferMoneyRequest);
 
-        softly.assertThat(transferMoneyResponse.getMessage()).isEqualTo("Transfer successful");
+        softly.assertThat(transferMoneyResponse.getMessage()).isEqualTo(ApiAtributesOfResponse.TRANSFER_SUCCESS);
 
-        // проверка того, что аккаунт пополнился
-        UserSteps.checkBalance(createUserRequest, createSecondAccountResponse.getId(), createSecondAccountResponse.getBalance() + amount);
-
-        // проверка того, что баланс на отправляющем аккаунте уменьшился
-        UserSteps.checkBalance(createUserRequest, createAccountResponse.getId(), Math.round((depositAccountResponse.getBalance() - amount) * 100) / 100.00f);
+        UserSteps.checkBalancesAfterTransfer(createUserRequest, createSecondAccountResponse.getId(), createSecondAccountResponse.getBalance() + amount,
+                createUserRequest, createAccountResponse.getId(), depositAccountResponse.getBalance() - amount);
     }
 
     @Test
     public void userCanTransferCorrectAmountOnAccountAnotherUserTest() {
-        //создание пользователя
         CreateUserRequest createUserRequest = AdminSteps.createUser().request();
 
-        //создание аккаунта
         CreateAccountResponse createAccountResponse = UserSteps.createAccount(createUserRequest);
 
-        //создание второго пользователя
         CreateUserRequest createDifferentUserRequest = AdminSteps.createUser().request();
 
-        //создание аккаунта у второго пользователя
         CreateAccountResponse createAccountDifferentUserResponse = UserSteps.createAccount(createDifferentUserRequest);
 
-        // осуществляем пополнение аккаунта
-        DepositAccountResponse depositAccountResponse = UserSteps.depositAccount(createAccountResponse, createUserRequest, 1F);
+        DepositAccountResponse depositAccountResponse = UserSteps.depositAccount(createAccountResponse, createUserRequest, RandomData.getBigAmount());
 
-        // переводим сумму
+        float transferAmount = RandomData.getSmallAmount();
         TransferMoneyRequest transferMoneyRequest = TransferMoneyRequest.builder()
                 .senderAccountId(createAccountResponse.getId())
                 .receiverAccountId(createAccountDifferentUserResponse.getId())
-                .amount(0.01F)
+                .amount(transferAmount)
                 .build();
 
         new CrudRequester(
@@ -87,41 +76,32 @@ public class TransferMoneyByUserTest extends BaseTest {
                         createUserRequest.getUsername(),
                         createUserRequest.getPassword()),
                 Endpoint.ACCOUNT_TRANSFER,
-                ResponseSpecs.requestReturnsOK("message", "Transfer successful"))
+                ResponseSpecs.requestReturnsOKAndMessageSuccess(ApiAtributesOfResponse.MESSAGE_KEY, ApiAtributesOfResponse.TRANSFER_SUCCESS))
                 .post(transferMoneyRequest);
 
-        // проверка того, что аккаунт пополнился
-        UserSteps.checkBalance(createDifferentUserRequest, createAccountDifferentUserResponse.getId(), createAccountDifferentUserResponse.getBalance() + 0.01F);
-
-        // проверка того, что баланс на отправляющем аккаунте уменьшился
-        UserSteps.checkBalance(createUserRequest, createAccountResponse.getId(), depositAccountResponse.getBalance() - 0.01F);
+        UserSteps.checkBalancesAfterTransfer(createDifferentUserRequest, createAccountDifferentUserResponse.getId(), createAccountDifferentUserResponse.getBalance() + transferAmount,
+                createUserRequest, createAccountResponse.getId(), depositAccountResponse.getBalance() - transferAmount);
     }
 
     public static Stream<Arguments> invalidData() {
         return Stream.of(
-                Arguments.of(12000F, 10000.01F, "Transfer amount cannot exceed 10000"),
-                Arguments.of(1F, -0.01F, "Transfer amount must be at least 0.01"),
-                Arguments.of(1F, 0F, "Transfer amount must be at least 0.01")
+                Arguments.of(RandomData.getBigAmount(), 10000.01F, "Transfer amount cannot exceed 10000"),
+                Arguments.of(RandomData.getSmallAmount(), -0.01F, "Transfer amount must be at least 0.01"),
+                Arguments.of(RandomData.getSmallAmount(), 0F, "Transfer amount must be at least 0.01")
         );
     }
 
     @ParameterizedTest
     @MethodSource("invalidData")
     public void userCanNotTransferInvalidAmountTest(float depositAmount, float amount, String error) {
-        //создание пользователя
         CreateUserRequest createUserRequest = AdminSteps.createUser().request();
 
-        //создание аккаунта
         CreateAccountResponse createAccountResponse = UserSteps.createAccount(createUserRequest);
 
-        //создание второго аккаунта
         CreateAccountResponse createSecondAccountResponse = UserSteps.createAccount(createUserRequest);
 
-        // осуществляем пополнение аккаунта
         DepositAccountResponse depositAccountResponse = UserSteps.depositAccount(createAccountResponse, createUserRequest, depositAmount);
 
-
-        // переводим сумму
         TransferMoneyRequest transferMoneyRequest = TransferMoneyRequest.builder()
                 .senderAccountId(createAccountResponse.getId())
                 .receiverAccountId(createSecondAccountResponse.getId())
@@ -136,30 +116,22 @@ public class TransferMoneyByUserTest extends BaseTest {
                 ResponseSpecs.requestReturnsBadRequest(error))
                 .post(transferMoneyRequest);
 
-        // проверка того, что аккаунт не пополнился
-        UserSteps.checkBalance(createUserRequest, createSecondAccountResponse.getId(), createSecondAccountResponse.getBalance());
-
-        // проверка того, что баланс на отправляющем аккаунте не уменьшился
-        UserSteps.checkBalance(createUserRequest, createAccountResponse.getId(), depositAccountResponse.getBalance());
+        UserSteps.checkBalancesAfterTransfer(createUserRequest, createSecondAccountResponse.getId(), createSecondAccountResponse.getBalance(),
+                createUserRequest, createAccountResponse.getId(), depositAccountResponse.getBalance());
     }
 
     @Test
     public void userCanNotTransferAmountMoreThenBalanceTest() {
-
-        //создание пользователя
         CreateUserRequest createUserRequest = AdminSteps.createUser().request();
 
-        //создание аккаунта
         CreateAccountResponse createAccountResponse = UserSteps.createAccount(createUserRequest);
 
-        //создание второго аккаунта
         CreateAccountResponse createSecondAccountResponse = UserSteps.createAccount(createUserRequest);
 
-        // переводим сумму
         TransferMoneyRequest transferMoneyRequest = TransferMoneyRequest.builder()
                 .senderAccountId(createAccountResponse.getId())
                 .receiverAccountId(createSecondAccountResponse.getId())
-                .amount(6000F)
+                .amount(RandomData.getSmallAmount())
                 .build();
 
         new CrudRequester(
@@ -167,13 +139,10 @@ public class TransferMoneyByUserTest extends BaseTest {
                         createUserRequest.getUsername(),
                         createUserRequest.getPassword()),
                 Endpoint.ACCOUNT_TRANSFER,
-                ResponseSpecs.requestReturnsBadRequest("Invalid transfer: insufficient funds or invalid accounts"))
+                ResponseSpecs.requestReturnsBadRequest(ApiAtributesOfResponse.ERROR_TRANSFER))
                 .post(transferMoneyRequest);
 
-        // проверка того, что аккаунт не пополнился
-        UserSteps.checkBalance(createUserRequest, createSecondAccountResponse.getId(), createSecondAccountResponse.getBalance());
-
-        // проверка того, что баланс на отправляющем аккаунте не уменьшился
-        UserSteps.checkBalance(createUserRequest, createAccountResponse.getId(), createSecondAccountResponse.getBalance());
+        UserSteps.checkBalancesAfterTransfer(createUserRequest, createSecondAccountResponse.getId(), createSecondAccountResponse.getBalance(),
+                createUserRequest, createAccountResponse.getId(), createSecondAccountResponse.getBalance());
     }
 }
