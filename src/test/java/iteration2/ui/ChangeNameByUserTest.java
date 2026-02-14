@@ -1,5 +1,6 @@
 package iteration2.ui;
 
+import api.generators.RandomData;
 import api.models.CreateUserRequest;
 import api.models.GetInfoResponse;
 import api.requests.steps.AdminSteps;
@@ -18,23 +19,24 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public class ChangeNameByUserTest extends BaseUiTest {
 
     @Test
-    public void userCanChangeNameWithCorrectNameTest() {
-
+    public void userCanChangeNameWithCorrectNameTest(){
         CreateUserRequest user = AdminSteps.createUser().request();
 //        authAsUser(user);
 
         new UserDashboard().open().goToChangeName().getPage(EditProfile.class).getEditProfileText().shouldBe(Condition.visible);
 
-        new EditProfile().changeName("Bon Jovi").checkAlertMessageAdnAccept(BankAlert.NAME_UPDATE_SUCCESSFULLY.getMessage());
+        String newName = RandomData.getName();
+
+        new EditProfile().changeName(newName).checkAlertMessageAdnAccept(BankAlert.NAME_UPDATE_SUCCESSFULLY.getMessage());
 
         Selenide.refresh();
 
-        new EditProfile().checkUsername(user.getUsername(), "Bon Jovi");
+        new EditProfile().checkUsername(user.getUsername(), newName);
 
         GetInfoResponse userInfo = new UserSteps(user.getUsername(), user.getPassword()).getUserInfo();
 
         assertThat(userInfo.getName()).isNotNull();
-        assertEquals("Bon Jovi", userInfo.getName());
+        assertEquals(newName, userInfo.getName());
     }
 
     @Test
@@ -44,7 +46,7 @@ public class ChangeNameByUserTest extends BaseUiTest {
 
         new UserDashboard().open().goToChangeName().getPage(EditProfile.class).getEditProfileText().shouldBe(Condition.visible);
 
-        new EditProfile().changeName("David").checkAlertMessageAdnAccept(BankAlert.NAME_MUST_CONTAIN_TWO_WORDS_WITH_LETTERS_ONLY.getMessage());
+        new EditProfile().changeName(RandomData.getIncorrectName()).checkAlertMessageAdnAccept(BankAlert.NAME_MUST_CONTAIN_TWO_WORDS_WITH_LETTERS_ONLY.getMessage());
 
         Selenide.refresh();
 

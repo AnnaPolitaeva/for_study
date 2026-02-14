@@ -1,5 +1,6 @@
 package iteration2.ui;
 
+import api.generators.RandomData;
 import api.models.CreateAccountResponse;
 import api.models.CreateUserRequest;
 import api.requests.steps.AdminSteps;
@@ -10,6 +11,8 @@ import ui.pages.BankAlert;
 import ui.pages.DepositAccount;
 import ui.pages.LoginPage;
 import ui.pages.UserDashboard;
+
+import java.util.Locale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -25,13 +28,14 @@ public class DepositByUserTest extends BaseUiTest {
 
         new LoginPage().open().login(user.getUsername(), user.getPassword()).getPage(UserDashboard.class).getDepositMoneyButton().click();
 
-        new DepositAccount().open().depositMoney("200", accountInfo.getId()).checkAlertMessageAdnAccept(BankAlert.SUCCESSFULLY_DEPOSIT_200_TO_ACCOUNT.getMessage());
+        float amount = RandomData.getSmallAmount();
+        new DepositAccount().open().depositMoney(String.format(Locale.US,"%.2f", amount), accountInfo.getId()).checkAlertMessageAdnAccept(BankAlert.SUCCESSFULLY_DEPOSIT_TO_ACCOUNT.getFormatMessage(String.format(Locale.US,"%.2f", amount)));
 
         CreateAccountResponse createdAccount = new UserSteps(user.getUsername(), user.getPassword()).getAllAccounts().stream().filter(account -> account.getAccountNumber().equals(accountInfo.getAccountNumber()))
                 .findFirst().orElse(null);
 
         assertThat(createdAccount).isNotNull();
-        assertEquals(200.00F, createdAccount.getBalance());
+        assertEquals(amount, createdAccount.getBalance());
     }
 
     @Test

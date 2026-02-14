@@ -1,5 +1,6 @@
 package iteration1.api;
 
+import api.configs.Config;
 import api.models.CreateUserRequest;
 import api.models.LoginUserRequest;
 import org.hamcrest.Matchers;
@@ -14,8 +15,8 @@ public class LoginUserTest extends BaseTest{
     @Test
     public void adminCanGenerateAuthTokenTest() {
         LoginUserRequest userRequest = LoginUserRequest.builder()
-                .username("admin")
-                .password("admin")
+                .username(Config.getProperty("admin.username"))
+                .password(Config.getProperty("admin.password"))
                 .build();
 
         new CrudRequester(RequestSpecs.unauthSpec(),
