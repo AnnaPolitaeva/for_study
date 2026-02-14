@@ -35,8 +35,7 @@ public class DepositByUserTest {
                 Map.of("enableVNC", true, "enebleLog", true)
         );
     }
-    //Ann12345
-    //UZTvfcr831%%
+
     @Test
     public void userCanDepositAccountWithCorrectAmount(){
         // ШАГИ ПО НАСТРОЙКЕ ОКРУЖЕНИЯ

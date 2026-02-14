@@ -20,6 +20,10 @@ public class RandomData {
         return RandomStringUtils.randomAlphabetic(5) + " " + RandomStringUtils.randomAlphabetic(5);
     }
 
+    public static String getIncorrectName() {
+        return RandomStringUtils.randomAlphabetic(8);
+    }
+
     public static float getNegativeAmount() {
         return RandomUtils.nextFloat(-3000F, -5F);
     }

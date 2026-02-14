@@ -4,6 +4,7 @@ import com.codeborne.selenide.Condition;
 import com.codeborne.selenide.Configuration;
 import com.codeborne.selenide.Selectors;
 import com.codeborne.selenide.Selenide;
+import generators.RandomData;
 import models.CreateAccountResponse;
 import models.CreateUserRequest;
 import models.GetInfoResponse;
@@ -63,11 +64,12 @@ public class ChangeNameByUserTest {
 
         // ШАГИ ТЕСТА
         // ШАГ 4: юзер меняет имя
+        String newName = RandomData.getName();
         $(Selectors.byText("Noname")).click();
         $(Selectors.byText("✏️ Edit Profile")).shouldBe(Condition.visible);
         $(Selectors.byAttribute("placeholder", "Enter new name")).shouldBe(Condition.visible)
-                .setValue("Bon Jovi")
-                .shouldHave(Condition.value("Bon Jovi"));
+                .setValue(newName)
+                .shouldHave(Condition.value(newName));
         $(Selectors.byText("💾 Save Changes")).click();
 
         // ШАГ 5: проверка, что имя было изменено в UI
@@ -79,7 +81,7 @@ public class ChangeNameByUserTest {
 
         Selenide.refresh();
 
-        $(Selectors.byText(user.getUsername())).parent().shouldHave(text("Bon Jovi"));
+        $(Selectors.byText(user.getUsername())).parent().shouldHave(text(newName));
 
         // ШАГ 6: проверка, что имя было изменено на API
         GetInfoResponse userInfo = given()
@@ -89,7 +91,7 @@ public class ChangeNameByUserTest {
                 .extract().as(GetInfoResponse.class);
 
         assertThat(userInfo.getName()).isNotNull();
-        assertEquals("Bon Jovi", userInfo.getName());
+        assertEquals(newName, userInfo.getName());
     }
 
     @Test
@@ -116,11 +118,12 @@ public class ChangeNameByUserTest {
 
         // ШАГИ ТЕСТА
         // ШАГ 4: юзер меняет имя
+        String incorrectName = RandomData.getIncorrectName();
         $(Selectors.byText("Noname")).click();
         $(Selectors.byText("✏️ Edit Profile")).shouldBe(Condition.visible);
         $(Selectors.byAttribute("placeholder", "Enter new name")).shouldBe(Condition.visible)
-                .setValue("David")
-                .shouldHave(Condition.value("David"));
+                .setValue(incorrectName)
+                .shouldHave(Condition.value(incorrectName));
         $(Selectors.byText("💾 Save Changes")).click();
 
         // ШАГ 5: проверка, что имя было изменено в UI
