@@ -1,7 +1,6 @@
 package iteration2;
 
 import generators.RandomData;
-import io.qameta.allure.Allure;
 import iteration1.BaseTest;
 import models.*;
 import org.junit.jupiter.api.Test;
@@ -9,261 +8,140 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import requests.DepositAccountRequester;
-import requests.GetInfoRequester;
-import requests.TransferMoneyRequester;
+import requests.skeleton.Endpoint;
+import requests.skeleton.requesters.CrudRequester;
+import requests.skeleton.requesters.ValidatedCrudRequester;
+import requests.steps.AdminSteps;
+import requests.steps.UserSteps;
 import specs.RequestSpecs;
 import specs.ResponseSpecs;
 
 import java.util.stream.Stream;
 
 public class TransferMoneyByUserTest extends BaseTest {
-    private CreateUserRequest createUserRequest;
-    private CreateAccountResponse createAccountResponse;
-    private CreateUserRequest createDifferentUserRequest;
-    private CreateAccountResponse createAccountDifferentUserResponse;
-    private CreateAccountResponse createSecondAccountResponse;
-    private DepositAccountResponse depositAccountResponse;
-    private TransferMoneyResponse transferMoneyResponse;
-    private float amount;
 
     @ParameterizedTest
     @ValueSource(floats = {9999.99F, 10000F})
     public void userCanTransferCorrectAmountOnOwnAccountTest(float amount) {
-        Allure.step("Подготовка тестовых данных", () -> {
-            createUserRequest = createUser();
-            createAccountResponse = createAccount(createUserRequest);
-            createSecondAccountResponse = createAccount(createUserRequest);
-            DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
-                    .id(createAccountResponse.getId())
-                    .balance(5000F)
-                    .build();
+        CreateUserRequest createUserRequest = AdminSteps.createUser().request();
 
-            new DepositAccountRequester(
-                    RequestSpecs.authAsUser(
-                            createUserRequest.getUsername(),
-                            createUserRequest.getPassword()),
-                    ResponseSpecs.requestReturnsOK())
-                    .post(depositAccountRequest).extract().as(DepositAccountResponse.class);
+        CreateAccountResponse createAccountResponse = UserSteps.createAccount(createUserRequest);
 
-            depositAccountResponse = new DepositAccountRequester(
-                    RequestSpecs.authAsUser(
-                            createUserRequest.getUsername(),
-                            createUserRequest.getPassword()),
-                    ResponseSpecs.requestReturnsOK())
-                    .post(depositAccountRequest).extract().as(DepositAccountResponse.class);
-        });
+        CreateAccountResponse createSecondAccountResponse = UserSteps.createAccount(createUserRequest);
 
-        Allure.step("Перевод корректной суммы с одного аккаунта на другой", () -> {
-            TransferMoneyRequest transferMoneyRequest = TransferMoneyRequest.builder()
-                    .senderAccountId(createAccountResponse.getId())
-                    .receiverAccountId(createSecondAccountResponse.getId())
-                    .amount(amount)
-                    .build();
+        DepositAccountResponse depositAccountResponse = UserSteps.depositAccount(createAccountResponse, createUserRequest, RandomData.getBigAmount());
 
-            transferMoneyResponse = new TransferMoneyRequester(
-                    RequestSpecs.authAsUser(
-                            createUserRequest.getUsername(),
-                            createUserRequest.getPassword()),
-                    ResponseSpecs.requestReturnsOK())
-                    .put(transferMoneyRequest).extract().as(TransferMoneyResponse.class);
+        TransferMoneyRequest transferMoneyRequest = TransferMoneyRequest.builder()
+                .senderAccountId(createAccountResponse.getId())
+                .receiverAccountId(createSecondAccountResponse.getId())
+                .amount(amount)
+                .build();
 
-            softly.assertThat(transferMoneyResponse.getMessage()).isEqualTo("Transfer successful");
-        });
+        TransferMoneyResponse transferMoneyResponse = new ValidatedCrudRequester<TransferMoneyResponse>(
+                RequestSpecs.authAsUser(
+                        createUserRequest.getUsername(),
+                        createUserRequest.getPassword()),
+                Endpoint.ACCOUNT_TRANSFER,
+                ResponseSpecs.requestReturnsOK())
+                .post(transferMoneyRequest);
 
-        Allure.step("Проверка изменений баланса аккаунта-отправителя", () -> {
-            new GetInfoRequester(
-                    RequestSpecs.authAsUser(
-                            createUserRequest.getUsername(),
-                            createUserRequest.getPassword()),
-                    ResponseSpecs.requestReturnsOK(createAccountResponse.getId(), Math.round((depositAccountResponse.getBalance() - amount) * 100) / 100.00f))
-                    .get();
-        });
+        softly.assertThat(transferMoneyResponse.getMessage()).isEqualTo(ApiAtributesOfResponse.TRANSFER_SUCCESS);
 
-        Allure.step("Проверка изменений баланса аккаунта-получателя", () -> {
-            new GetInfoRequester(
-                    RequestSpecs.authAsUser(
-                            createUserRequest.getUsername(),
-                            createUserRequest.getPassword()),
-                    ResponseSpecs.requestReturnsOK(createSecondAccountResponse.getId(), createSecondAccountResponse.getBalance() + amount))
-                    .get();
-        });
+        UserSteps.checkBalancesAfterTransfer(createUserRequest, createSecondAccountResponse.getId(), createSecondAccountResponse.getBalance() + amount,
+                createUserRequest, createAccountResponse.getId(), depositAccountResponse.getBalance() - amount);
     }
 
     @Test
     public void userCanTransferCorrectAmountOnAccountAnotherUserTest() {
-        Allure.step("Подготовка тестовых данных", () -> {
-            createUserRequest = createUser();
-            createAccountResponse = createAccount(createUserRequest);
-            createDifferentUserRequest = createUser();
-            createAccountDifferentUserResponse = createAccount(createDifferentUserRequest);
+        CreateUserRequest createUserRequest = AdminSteps.createUser().request();
 
-            DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
-                    .id(createAccountResponse.getId())
-                    .balance(1F)
-                    .build();
+        CreateAccountResponse createAccountResponse = UserSteps.createAccount(createUserRequest);
 
-            depositAccountResponse = new DepositAccountRequester(
-                    RequestSpecs.authAsUser(
-                            createUserRequest.getUsername(),
-                            createUserRequest.getPassword()),
-                    ResponseSpecs.requestReturnsOK())
-                    .post(depositAccountRequest).extract().as(DepositAccountResponse.class);
-        });
+        CreateUserRequest createDifferentUserRequest = AdminSteps.createUser().request();
 
-        Allure.step("Перевод корректной суммы с одного аккаунта на другой", () -> {
-            TransferMoneyRequest transferMoneyRequest = TransferMoneyRequest.builder()
-                    .senderAccountId(createAccountResponse.getId())
-                    .receiverAccountId(createAccountDifferentUserResponse.getId())
-                    .amount(0.01F)
-                    .build();
+        CreateAccountResponse createAccountDifferentUserResponse = UserSteps.createAccount(createDifferentUserRequest);
 
-            transferMoneyResponse = new TransferMoneyRequester(
-                    RequestSpecs.authAsUser(
-                            createUserRequest.getUsername(),
-                            createUserRequest.getPassword()),
-                    ResponseSpecs.requestReturnsOK())
-                    .put(transferMoneyRequest).extract().as(TransferMoneyResponse.class);
+        DepositAccountResponse depositAccountResponse = UserSteps.depositAccount(createAccountResponse, createUserRequest, RandomData.getBigAmount());
 
-            softly.assertThat(transferMoneyResponse.getMessage()).isEqualTo("Transfer successful");
-        });
+        float transferAmount = RandomData.getSmallAmount();
+        TransferMoneyRequest transferMoneyRequest = TransferMoneyRequest.builder()
+                .senderAccountId(createAccountResponse.getId())
+                .receiverAccountId(createAccountDifferentUserResponse.getId())
+                .amount(transferAmount)
+                .build();
 
-        Allure.step("Проверка изменений баланса аккаунта-отправителя", () -> {
-            new GetInfoRequester(
-                    RequestSpecs.authAsUser(
-                            createUserRequest.getUsername(),
-                            createUserRequest.getPassword()),
-                    ResponseSpecs.requestReturnsOK(createAccountResponse.getId(), depositAccountResponse.getBalance() - 0.01F))
-                    .get();
-        });
+        new CrudRequester(
+                RequestSpecs.authAsUser(
+                        createUserRequest.getUsername(),
+                        createUserRequest.getPassword()),
+                Endpoint.ACCOUNT_TRANSFER,
+                ResponseSpecs.requestReturnsOKAndMessageSuccess(ApiAtributesOfResponse.MESSAGE_KEY, ApiAtributesOfResponse.TRANSFER_SUCCESS))
+                .post(transferMoneyRequest);
 
-        Allure.step("Проверка изменений баланса аккаунта-получателя", () -> {
-            new GetInfoRequester(
-                    RequestSpecs.authAsUser(
-                            createDifferentUserRequest.getUsername(),
-                            createDifferentUserRequest.getPassword()),
-                    ResponseSpecs.requestReturnsOK(createAccountDifferentUserResponse.getId(), createAccountDifferentUserResponse.getBalance() + 0.01F))
-                    .get();
-        });
+        UserSteps.checkBalancesAfterTransfer(createDifferentUserRequest, createAccountDifferentUserResponse.getId(), createAccountDifferentUserResponse.getBalance() + transferAmount,
+                createUserRequest, createAccountResponse.getId(), depositAccountResponse.getBalance() - transferAmount);
     }
 
     public static Stream<Arguments> invalidData() {
         return Stream.of(
-                Arguments.of(10000.01F, "Transfer amount cannot exceed 10000"),
-                Arguments.of(-0.01F, "Transfer amount must be at least 0.01"),
-                Arguments.of(0F, "Transfer amount must be at least 0.01")
+                Arguments.of(RandomData.getBigAmount(), 10000.01F, "Transfer amount cannot exceed 10000"),
+                Arguments.of(RandomData.getSmallAmount(), -0.01F, "Transfer amount must be at least 0.01"),
+                Arguments.of(RandomData.getSmallAmount(), 0F, "Transfer amount must be at least 0.01")
         );
     }
 
     @ParameterizedTest
     @MethodSource("invalidData")
-    public void userCanNotTransferInvalidAmountTest(float amount, String error) {
-        Allure.step("Подготовка тестовых данных", () -> {
-            createUserRequest = createUser();
-            createAccountResponse = createAccount(createUserRequest);
-            createSecondAccountResponse = createAccount(createUserRequest);
-            DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
-                    .id(createAccountResponse.getId())
-                    .balance(5000F)
-                    .build();
+    public void userCanNotTransferInvalidAmountTest(float depositAmount, float amount, String error) {
+        CreateUserRequest createUserRequest = AdminSteps.createUser().request();
 
-            new DepositAccountRequester(
-                    RequestSpecs.authAsUser(
-                            createUserRequest.getUsername(),
-                            createUserRequest.getPassword()),
-                    ResponseSpecs.requestReturnsOK())
-                    .post(depositAccountRequest).extract().as(DepositAccountResponse.class);
+        CreateAccountResponse createAccountResponse = UserSteps.createAccount(createUserRequest);
 
-            new DepositAccountRequester(
-                    RequestSpecs.authAsUser(
-                            createUserRequest.getUsername(),
-                            createUserRequest.getPassword()),
-                    ResponseSpecs.requestReturnsOK())
-                    .post(depositAccountRequest).extract().as(DepositAccountResponse.class);
+        CreateAccountResponse createSecondAccountResponse = UserSteps.createAccount(createUserRequest);
 
-            depositAccountResponse = new DepositAccountRequester(
-                    RequestSpecs.authAsUser(
-                            createUserRequest.getUsername(),
-                            createUserRequest.getPassword()),
-                    ResponseSpecs.requestReturnsOK())
-                    .post(depositAccountRequest).extract().as(DepositAccountResponse.class);
-        });
+        DepositAccountResponse depositAccountResponse = UserSteps.depositAccount(createAccountResponse, createUserRequest, depositAmount);
 
-        Allure.step("Перевод НЕкорректной суммы", () -> {
-            TransferMoneyRequest transferMoneyRequest = TransferMoneyRequest.builder()
-                    .senderAccountId(createAccountResponse.getId())
-                    .receiverAccountId(createSecondAccountResponse.getId())
-                    .amount(amount)
-                    .build();
+        TransferMoneyRequest transferMoneyRequest = TransferMoneyRequest.builder()
+                .senderAccountId(createAccountResponse.getId())
+                .receiverAccountId(createSecondAccountResponse.getId())
+                .amount(amount)
+                .build();
 
-            new TransferMoneyRequester(
-                    RequestSpecs.authAsUser(
-                            createUserRequest.getUsername(),
-                            createUserRequest.getPassword()),
-                    ResponseSpecs.requestReturnsBadRequest(error))
-                    .put(transferMoneyRequest);
-        });
+        new CrudRequester(
+                RequestSpecs.authAsUser(
+                        createUserRequest.getUsername(),
+                        createUserRequest.getPassword()),
+                Endpoint.ACCOUNT_TRANSFER,
+                ResponseSpecs.requestReturnsBadRequest(error))
+                .post(transferMoneyRequest);
 
-        Allure.step("Проверка, что баланс аккаунта-отправителя не изменился", () -> {
-            new GetInfoRequester(
-                    RequestSpecs.authAsUser(
-                            createUserRequest.getUsername(),
-                            createUserRequest.getPassword()),
-                    ResponseSpecs.requestReturnsOK(createAccountResponse.getId(), createAccountResponse.getBalance()))
-                    .get();
-        });
-
-        Allure.step("Проверка, что баланс аккаунта-получателя не изменился", () -> {
-            new GetInfoRequester(
-                    RequestSpecs.authAsUser(
-                            createUserRequest.getUsername(),
-                            createUserRequest.getPassword()),
-                    ResponseSpecs.requestReturnsOK(createSecondAccountResponse.getId(), createSecondAccountResponse.getBalance()))
-                    .get();
-        });
+        UserSteps.checkBalancesAfterTransfer(createUserRequest, createSecondAccountResponse.getId(), createSecondAccountResponse.getBalance(),
+                createUserRequest, createAccountResponse.getId(), depositAccountResponse.getBalance());
     }
 
     @Test
     public void userCanNotTransferAmountMoreThenBalanceTest() {
+        CreateUserRequest createUserRequest = AdminSteps.createUser().request();
 
-        Allure.step("Подготовка тестовых данных", () -> {
-            createUserRequest = createUser();
-            createAccountResponse = createAccount(createUserRequest);
-            createSecondAccountResponse = createAccount(createUserRequest);
-            amount = RandomData.getAmount();
-        });
+        CreateAccountResponse createAccountResponse = UserSteps.createAccount(createUserRequest);
 
-        Allure.step("Перевод корректной суммы с аккаунта с нулевым балансом", () -> {
-            TransferMoneyRequest transferMoneyRequest = TransferMoneyRequest.builder()
-                    .senderAccountId(createAccountResponse.getId())
-                    .receiverAccountId(createSecondAccountResponse.getId())
-                    .amount(amount)
-                    .build();
+        CreateAccountResponse createSecondAccountResponse = UserSteps.createAccount(createUserRequest);
 
-            new TransferMoneyRequester(
-                    RequestSpecs.authAsUser(
-                            createUserRequest.getUsername(),
-                            createUserRequest.getPassword()),
-                    ResponseSpecs.requestReturnsBadRequestInTransfer())
-                    .put(transferMoneyRequest);
-        });
+        TransferMoneyRequest transferMoneyRequest = TransferMoneyRequest.builder()
+                .senderAccountId(createAccountResponse.getId())
+                .receiverAccountId(createSecondAccountResponse.getId())
+                .amount(RandomData.getSmallAmount())
+                .build();
 
-        Allure.step("Проверка, что баланс аккаунта-отправителя не изменился", () -> {
-            new GetInfoRequester(
-                    RequestSpecs.authAsUser(
-                            createUserRequest.getUsername(),
-                            createUserRequest.getPassword()),
-                    ResponseSpecs.requestReturnsOK(createAccountResponse.getId(), createAccountResponse.getBalance()))
-                    .get();
-        });
+        new CrudRequester(
+                RequestSpecs.authAsUser(
+                        createUserRequest.getUsername(),
+                        createUserRequest.getPassword()),
+                Endpoint.ACCOUNT_TRANSFER,
+                ResponseSpecs.requestReturnsBadRequest(ApiAtributesOfResponse.ERROR_TRANSFER))
+                .post(transferMoneyRequest);
 
-        Allure.step("Проверка, что баланс аккаунта-получателя не изменился", () -> {
-            new GetInfoRequester(
-                    RequestSpecs.authAsUser(
-                            createUserRequest.getUsername(),
-                            createUserRequest.getPassword()),
-                    ResponseSpecs.requestReturnsOK(createSecondAccountResponse.getId(), createSecondAccountResponse.getBalance()))
-                    .get();
-        });
+        UserSteps.checkBalancesAfterTransfer(createUserRequest, createSecondAccountResponse.getId(), createSecondAccountResponse.getBalance(),
+                createUserRequest, createAccountResponse.getId(), createSecondAccountResponse.getBalance());
     }
 }

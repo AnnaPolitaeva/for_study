@@ -26,10 +26,10 @@ public class ResponseSpecs {
                 .build();
     }
 
-    public static ResponseSpecification requestReturnsOKAndMessageSuccess() {
+    public static ResponseSpecification requestReturnsOKAndMessageSuccess(String key, String text) {
         return defaultResponseBuilder()
                 .expectStatusCode(HttpStatus.SC_OK)
-                .expectBody("message", equalTo("Profile updated successfully"))
+                .expectBody(key, equalTo(text))
                 .build();
     }
 
@@ -54,30 +54,10 @@ public class ResponseSpecs {
                 .build();
     }
 
-    public static ResponseSpecification requestReturnsBadRequestInTransfer() {
-        return defaultResponseBuilder()
-                .expectStatusCode(HttpStatus.SC_BAD_REQUEST)
-                .expectBody(equalTo("Invalid transfer: insufficient funds or invalid accounts"))
-                .build();
-    }
-
-    public static ResponseSpecification requestReturnsBadRequestForChangeName() {
-        return defaultResponseBuilder()
-                .expectStatusCode(HttpStatus.SC_BAD_REQUEST)
-                .expectBody(equalTo("Name must contain two words with letters only"))
-                .build();
-    }
-
-    public static ResponseSpecification requestReturnsBadRequest() {
-        return defaultResponseBuilder()
-                .expectStatusCode(HttpStatus.SC_BAD_REQUEST)
-                .build();
-    }
-
-    public static ResponseSpecification requestReturnsForbidden() {
+    public static ResponseSpecification requestReturnsForbidden(String error) {
         return defaultResponseBuilder()
                 .expectStatusCode(HttpStatus.SC_FORBIDDEN)
-                .expectBody(equalTo("Unauthorized access to account"))
+                .expectBody(equalTo(error))
                 .build();
     }
 }

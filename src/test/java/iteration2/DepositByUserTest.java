@@ -1,71 +1,62 @@
 package iteration2;
 
 import generators.RandomData;
-import io.qameta.allure.Allure;
-import io.qameta.allure.Description;
 import iteration1.BaseTest;
-import models.CreateAccountResponse;
-import models.CreateUserRequest;
-import models.DepositAccountRequest;
-import models.DepositAccountResponse;
+import models.*;
+import models.comparison.ModelAssertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import requests.DepositAccountRequester;
-import requests.GetInfoRequester;
+import requests.skeleton.Endpoint;
+import requests.skeleton.requesters.CrudRequester;
+import requests.skeleton.requesters.ValidatedCrudRequester;
+import requests.steps.AdminSteps;
+import requests.steps.UserSteps;
 import specs.RequestSpecs;
 import specs.ResponseSpecs;
 
 import java.util.stream.Stream;
 
 public class DepositByUserTest extends BaseTest {
-    private CreateUserRequest createUserRequest;
-    private CreateUserRequest createDifferentUserRequest;
-    private CreateAccountResponse createAccountResponse;
-    private CreateAccountResponse createAccountDifferentUserResponse;
-    private DepositAccountResponse depositAccountResponse;
-    private float amount;
-
 
     @ParameterizedTest
     @ValueSource(floats = {4999.99F, 5000F, 0.01F})
     public void userCanDepositAccountWithCorrectAmountTest(float amount) {
-        Allure.step("Подготовка тестовых данных", () -> {
-            createUserRequest = createUser();
-            createAccountResponse = createAccount(createUserRequest);
-        });
+        CreateUserRequest createUserRequest = AdminSteps.createUser().request();
 
-        Allure.step("Пополнение аккаунта пользователя корректной суммой", () -> {
-            DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
-                    .id(createAccountResponse.getId())
-                    .balance(amount)
-                    .build();
+        CreateAccountResponse createAccountResponse = UserSteps.createAccount(createUserRequest);
 
-            depositAccountResponse = new DepositAccountRequester(
-                    RequestSpecs.authAsUser(
-                            createUserRequest.getUsername(),
-                            createUserRequest.getPassword()),
-                    ResponseSpecs.requestReturnsOK())
-                    .post(depositAccountRequest).extract().as(DepositAccountResponse.class);
+        DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
+                .id(createAccountResponse.getId())
+                .balance(amount)
+                .build();
 
-            softly.assertThat(createAccountResponse.getBalance() + amount).isEqualTo(depositAccountResponse.getBalance());
-        });
+        DepositAccountResponse depositAccountResponse = new ValidatedCrudRequester<DepositAccountResponse>(
+                RequestSpecs.authAsUser(
+                        createUserRequest.getUsername(),
+                        createUserRequest.getPassword()),
+                Endpoint.ACCOUNT_DEPOSIT,
+                ResponseSpecs.requestReturnsOK())
+                .post(depositAccountRequest);
 
-        Allure.step("Проверка изменений баланса аккаунта пользователя", () -> {
-            new GetInfoRequester(
-                    RequestSpecs.authAsUser(
-                            createUserRequest.getUsername(),
-                            createUserRequest.getPassword()),
-                    ResponseSpecs.requestReturnsOK(createAccountResponse.getId(), createAccountResponse.getBalance() + amount))
-                    .get();
-        });
+        softly.assertThat(createAccountResponse.getBalance() + amount).isEqualTo(depositAccountResponse.getBalance());
+
+        GetInfoResponse getInfoResponse = new ValidatedCrudRequester<GetInfoResponse>(
+                RequestSpecs.authAsUser(
+                        createUserRequest.getUsername(),
+                        createUserRequest.getPassword()),
+                Endpoint.CUSTOMER_PROFILE,
+                ResponseSpecs.requestReturnsOK())
+                .get();
+
+        ModelAssertions.assertThatModels(depositAccountRequest, getInfoResponse);
     }
 
     public static Stream<Arguments> invalidData() {
         return Stream.of(
-                Arguments.of(-3000F, "Deposit amount must be at least 0.01"),
+                Arguments.of(RandomData.getNegativeAmount(), "Deposit amount must be at least 0.01"),
                 Arguments.of(-0.01F, "Deposit amount must be at least 0.01"),
                 Arguments.of(0F, "Deposit amount must be at least 0.01"),
                 Arguments.of(5000.01F, "Deposit amount cannot exceed 5000")
@@ -74,67 +65,66 @@ public class DepositByUserTest extends BaseTest {
 
     @ParameterizedTest
     @MethodSource("invalidData")
-    @Description("User Can Not Deposit Account With Invalid Amount")
-    public void userCanNotDepositAccountWithInvalidAmountTest(float amount, String error) {
-        Allure.step("Подготовка тестовых данных", () -> {
-            createUserRequest = createUser();
-            createAccountResponse = createAccount(createUserRequest);
-        });
+    public void userCanDepositAccountWithInvalidAmountTest(float amount, String error) {
+        CreateUserRequest createUserRequest = AdminSteps.createUser().request();
 
-        Allure.step("Пополнение аккаунта пользователя НЕкорректной суммой", () -> {
-            DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
-                    .id(createAccountResponse.getId())
-                    .balance(amount)
-                    .build();
+        CreateAccountResponse createAccountResponse = UserSteps.createAccount(createUserRequest);
 
-            new DepositAccountRequester(
-                    RequestSpecs.authAsUser(
-                            createUserRequest.getUsername(),
-                            createUserRequest.getPassword()),
-                    ResponseSpecs.requestReturnsBadRequest(error))
-                    .post(depositAccountRequest);
-        });
+        DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
+                .id(createAccountResponse.getId())
+                .balance(amount)
+                .build();
 
-        Allure.step("Проверка, что баланс аккаунта пользователя не изменился", () -> {
-            new GetInfoRequester(
-                    RequestSpecs.authAsUser(
-                            createUserRequest.getUsername(),
-                            createUserRequest.getPassword()),
-                    ResponseSpecs.requestReturnsOK(createAccountResponse.getId(), createAccountResponse.getBalance()))
-                    .get();
-        });
+        new CrudRequester(
+                RequestSpecs.authAsUser(
+                        createUserRequest.getUsername(),
+                        createUserRequest.getPassword()),
+                Endpoint.ACCOUNT_DEPOSIT,
+                ResponseSpecs.requestReturnsBadRequest(error))
+                .post(depositAccountRequest);
+
+        GetInfoResponse getInfoResponse = new ValidatedCrudRequester<GetInfoResponse>(
+                RequestSpecs.authAsUser(
+                        createUserRequest.getUsername(),
+                        createUserRequest.getPassword()),
+                Endpoint.CUSTOMER_PROFILE,
+                ResponseSpecs.requestReturnsOK(createAccountResponse.getId(), createAccountResponse.getBalance()))
+                .get();
+
+        ModelAssertions.assertThatModels(createAccountResponse, getInfoResponse);
     }
 
     @Test
     public void userCanNotDepositDifferentAccountTest() {
-        Allure.step("Подготовка тестовых данных", () -> {
-            createUserRequest = createUser();
-            amount = RandomData.getAmount();
-            createDifferentUserRequest = createUser();
-            createAccountDifferentUserResponse = createAccount(createDifferentUserRequest);
-        });
+        CreateUserRequest createUserRequest = AdminSteps.createUser().request();
 
-        Allure.step("Пополнение аккаунта другого пользователя", () -> {
-            DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
-                    .id(createAccountDifferentUserResponse.getId())
-                    .balance(amount)
-                    .build();
+        UserSteps.createAccount(createUserRequest);
 
-            new DepositAccountRequester(
-                    RequestSpecs.authAsUser(
-                            createUserRequest.getUsername(),
-                            createUserRequest.getPassword()),
-                    ResponseSpecs.requestReturnsForbidden())
-                    .post(depositAccountRequest);
-        });
+        CreateUserRequest createDifferentUserRequest = AdminSteps.createUser().request();
 
-        Allure.step("Проверка, что баланс аккаунта пользователя не изменился", () -> {
-            new GetInfoRequester(
-                    RequestSpecs.authAsUser(
-                            createDifferentUserRequest.getUsername(),
-                            createDifferentUserRequest.getPassword()),
-                    ResponseSpecs.requestReturnsOK(createAccountDifferentUserResponse.getId(), createAccountDifferentUserResponse.getBalance()))
-                    .get();
-        });
+        CreateAccountResponse createAccountDifferentUserResponse = UserSteps.createAccount(createDifferentUserRequest);
+
+        DepositAccountRequest depositAccountRequest = DepositAccountRequest.builder()
+                .id(createAccountDifferentUserResponse.getId())
+                .balance(RandomData.getSmallAmount())
+                .build();
+
+        new CrudRequester(
+                RequestSpecs.authAsUser(
+                        createUserRequest.getUsername(),
+                        createUserRequest.getPassword()),
+                Endpoint.ACCOUNT_DEPOSIT,
+                ResponseSpecs.requestReturnsForbidden(ApiAtributesOfResponse.ERROR_UNAUTHORISED))
+                .post(depositAccountRequest);
+
+        GetInfoResponse getInfoResponse = new ValidatedCrudRequester<GetInfoResponse>(
+                RequestSpecs.authAsUser(
+                        createDifferentUserRequest.getUsername(),
+                        createDifferentUserRequest.getPassword()),
+                Endpoint.CUSTOMER_PROFILE,
+                ResponseSpecs.requestReturnsOK(createAccountDifferentUserResponse.getId(), createAccountDifferentUserResponse.getBalance()))
+                .get();
+
+        ModelAssertions.assertThatModels(createAccountDifferentUserResponse, getInfoResponse);
     }
 }

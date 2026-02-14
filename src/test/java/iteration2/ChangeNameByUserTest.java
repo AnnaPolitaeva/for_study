@@ -1,86 +1,75 @@
 package iteration2;
 
 import generators.RandomData;
-import io.qameta.allure.Allure;
 import iteration1.BaseTest;
-import models.ChangeNameRequest;
-import models.CreateUserRequest;
-import models.GetInfoResponse;
+import models.*;
+import models.comparison.ModelAssertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import requests.ChangeNameRequester;
-import requests.GetInfoRequester;
+import requests.skeleton.Endpoint;
+import requests.skeleton.requesters.CrudRequester;
+import requests.skeleton.requesters.ValidatedCrudRequester;
+import requests.steps.AdminSteps;
 import specs.RequestSpecs;
 import specs.ResponseSpecs;
 
 public class ChangeNameByUserTest extends BaseTest {
-    private String newName;
-    private CreateUserRequest createUserRequest;
-    private GetInfoResponse getInfoResponse;
 
     @Test
     public void userCanChangeNameWithCorrectNameTest() {
 
-        Allure.step("Подготовка тестовых данных", () -> {
-            newName = RandomData.getName();
-            createUserRequest = createUser();
-        });
+        CreateUserRequest createUserRequest = AdminSteps.createUser().request();
 
-        Allure.step("Изменение имени пользователя", () -> {
-            ChangeNameRequest changeNameRequest = ChangeNameRequest.builder()
-                    .name(newName)
-                    .build();
+        ChangeNameRequest changeNameRequest = ChangeNameRequest.builder()
+                .name(RandomData.getName())
+                .build();
 
-            new ChangeNameRequester(
-                    RequestSpecs.authAsUser(
-                            createUserRequest.getUsername(),
-                            createUserRequest.getPassword()),
-                    ResponseSpecs.requestReturnsOKAndMessageSuccess())
-                    .post(changeNameRequest);
-        });
+        new CrudRequester(
+                RequestSpecs.authAsUser(
+                        createUserRequest.getUsername(),
+                        createUserRequest.getPassword()),
+                Endpoint.CUSTOMER_PROFILE,
+                ResponseSpecs.requestReturnsOKAndMessageSuccess(ApiAtributesOfResponse.MESSAGE_KEY, ApiAtributesOfResponse.PROFILE_UPDATE_SUCCESS))
+                .update(changeNameRequest);
 
-        Allure.step("Проверка изменений имени пользователя", () -> {
-            getInfoResponse = new GetInfoRequester(
-                    RequestSpecs.authAsUser(
-                            createUserRequest.getUsername(),
-                            createUserRequest.getPassword()),
-                    ResponseSpecs.requestReturnsOK())
-                    .get().extract().as(GetInfoResponse.class);
+        GetInfoResponse getInfoResponse = new ValidatedCrudRequester<GetInfoResponse>(
+                RequestSpecs.authAsUser(
+                        createUserRequest.getUsername(),
+                        createUserRequest.getPassword()),
+                Endpoint.CUSTOMER_PROFILE,
+                ResponseSpecs.requestReturnsOK())
+                .get();
 
-            softly.assertThat(getInfoResponse.getName()).isEqualTo(newName);
-        });
+        ModelAssertions.assertThatModels(createUserRequest, getInfoResponse).match();
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"Ann 123", "Sara  Parker", "Mike!Shein", "David"})
     public void userCanChangeNameWithIncorrectNameTest(String input) {
-        Allure.step("Подготовка тестовых данных", () -> {
-            createUserRequest = createUser();
-        });
+        CreateUserRequest createUserRequest = AdminSteps.createUser().request();
+        CreateUserResponse createUserResponse = AdminSteps.createUser().response();
 
-        Allure.step("Изменение имени пользователя некорректными данными", () -> {
-            ChangeNameRequest changeNameRequest = ChangeNameRequest.builder()
-                    .name(input)
-                    .build();
+        ChangeNameRequest changeNameRequest = ChangeNameRequest.builder()
+                .name(input)
+                .build();
 
-            new ChangeNameRequester(
-                    RequestSpecs.authAsUser(
-                            createUserRequest.getUsername(),
-                            createUserRequest.getPassword()),
-                    ResponseSpecs.requestReturnsBadRequestForChangeName())
-                    .post(changeNameRequest);
-        });
+        new CrudRequester(
+                RequestSpecs.authAsUser(
+                        createUserRequest.getUsername(),
+                        createUserRequest.getPassword()),
+                Endpoint.CUSTOMER_PROFILE,
+                ResponseSpecs.requestReturnsBadRequest(ApiAtributesOfResponse.ERROR_UPDATE_USERNAME))
+                .update(changeNameRequest);
 
-        Allure.step("Проверка, что имя пользователя не изменилось", () -> {
-            GetInfoResponse getInfoResponse = new GetInfoRequester(
-                    RequestSpecs.authAsUser(
-                            createUserRequest.getUsername(),
-                            createUserRequest.getPassword()),
-                    ResponseSpecs.requestReturnsOK())
-                    .get().extract().as(GetInfoResponse.class);
+        GetInfoResponse getInfoResponse = new ValidatedCrudRequester<GetInfoResponse>(
+                RequestSpecs.authAsUser(
+                        createUserRequest.getUsername(),
+                        createUserRequest.getPassword()),
+                Endpoint.CUSTOMER_PROFILE,
+                ResponseSpecs.requestReturnsOK())
+                .get();
 
-            softly.assertThat(getInfoResponse.getName()).isEqualTo(null);
-        });
+        ModelAssertions.assertThatModels(createUserResponse, getInfoResponse).match();
     }
 }
