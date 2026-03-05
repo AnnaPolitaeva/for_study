@@ -1,12 +1,11 @@
 package iteration2.ui;
 
 import api.generators.RandomData;
-import api.models.CreateUserRequest;
 import api.models.GetInfoResponse;
-import api.requests.steps.AdminSteps;
-import api.requests.steps.UserSteps;
 import com.codeborne.selenide.Condition;
 import com.codeborne.selenide.Selenide;
+import common.annotations.UserSession;
+import common.storage.SessionStorage;
 import iteration1.ui.BaseUiTest;
 import org.junit.jupiter.api.Test;
 import ui.pages.BankAlert;
@@ -19,9 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public class ChangeNameByUserTest extends BaseUiTest {
 
     @Test
+    @UserSession
     public void userCanChangeNameWithCorrectNameTest(){
-        CreateUserRequest user = AdminSteps.createUser().request();
-        authAsUser(user);
 
         new UserDashboard().open().goToChangeName().getPage(EditProfile.class).getEditProfileText().shouldBe(Condition.visible);
 
@@ -31,46 +29,42 @@ public class ChangeNameByUserTest extends BaseUiTest {
 
         Selenide.refresh();
 
-        new EditProfile().checkUsername(user.getUsername(), newName);
+        new EditProfile().checkUsername(SessionStorage.getUser().getUsername(), newName);
 
-        GetInfoResponse userInfo = new UserSteps(user.getUsername(), user.getPassword()).getUserInfo();
+        GetInfoResponse userInfo = SessionStorage.getSteps().getUserInfo();
 
         assertThat(userInfo.getName()).isNotNull();
         assertEquals(newName, userInfo.getName());
     }
 
     @Test
+    @UserSession
     public void userCanChangeNameWithIncorrectNameTest() {
-        CreateUserRequest user = AdminSteps.createUser().request();
-        authAsUser(user);
-
         new UserDashboard().open().goToChangeName().getPage(EditProfile.class).getEditProfileText().shouldBe(Condition.visible);
 
         new EditProfile().changeName(RandomData.getIncorrectName()).checkAlertMessageAdnAccept(BankAlert.NAME_MUST_CONTAIN_TWO_WORDS_WITH_LETTERS_ONLY.getMessage());
 
         Selenide.refresh();
 
-        new EditProfile().checkUsername(user.getUsername(), "Noname");
+        new EditProfile().checkUsername(SessionStorage.getUser().getUsername(), "Noname");
 
-        GetInfoResponse userInfo = new UserSteps(user.getUsername(), user.getPassword()).getUserInfo();
+        GetInfoResponse userInfo = SessionStorage.getSteps().getUserInfo();
 
         assertThat(userInfo.getName()).isNull();
     }
 
     @Test
+    @UserSession
     public void userCanChangeNameWithEmptyNameTest() {
-        CreateUserRequest user = AdminSteps.createUser().request();
-        authAsUser(user);
-
         new UserDashboard().open().goToChangeName().getPage(EditProfile.class).getEditProfileText().shouldBe(Condition.visible);
 
         new EditProfile().changeName(null).checkAlertMessageAdnAccept(BankAlert.PLEASE_ENTER_A_VALID_NAME.getMessage());
 
         Selenide.refresh();
 
-        new EditProfile().checkUsername(user.getUsername(), "Noname");
+        new EditProfile().checkUsername(SessionStorage.getUser().getUsername(), "Noname");
 
-        GetInfoResponse userInfo = new UserSteps(user.getUsername(), user.getPassword()).getUserInfo();
+        GetInfoResponse userInfo = SessionStorage.getSteps().getUserInfo();
 
         assertThat(userInfo.getName()).isNull();
     }

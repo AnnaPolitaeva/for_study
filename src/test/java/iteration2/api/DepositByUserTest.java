@@ -4,7 +4,6 @@ import api.generators.RandomData;
 import api.models.*;
 import iteration1.api.BaseTest;
 import iteration2.ApiAtributesOfResponse;
-import models.*;
 import api.models.comparison.ModelAssertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
