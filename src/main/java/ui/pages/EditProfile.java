@@ -32,4 +32,7 @@ public class EditProfile extends BasePage<EditProfile> {
         usernameText = $(Selectors.byText(username)).parent().shouldHave(text(newName));
         return this;
     }
+    public EditProfile checkUsername(String username) {
+        return checkUsername(username, "Noname");
+    }
 }

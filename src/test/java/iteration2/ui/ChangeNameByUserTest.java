@@ -46,7 +46,7 @@ public class ChangeNameByUserTest extends BaseUiTest {
 
         Selenide.refresh();
 
-        new EditProfile().checkUsername(SessionStorage.getUser().getUsername(), "Noname");
+        new EditProfile().checkUsername(SessionStorage.getUser().getUsername());
 
         GetInfoResponse userInfo = SessionStorage.getSteps().getUserInfo();
 
@@ -62,7 +62,7 @@ public class ChangeNameByUserTest extends BaseUiTest {
 
         Selenide.refresh();
 
-        new EditProfile().checkUsername(SessionStorage.getUser().getUsername(), "Noname");
+        new EditProfile().checkUsername(SessionStorage.getUser().getUsername());
 
         GetInfoResponse userInfo = SessionStorage.getSteps().getUserInfo();
 
